@@ -9,13 +9,23 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- Smart Environment Editor — view and manage `.env` variables from the UI
+  - Reads `.env`, `.env.local`, `.env.development` files (never modifies them)
+  - DB-backed overrides injected at runtime when starting services
+  - Port detection with colored status dots (green=free, red=in-use)
+  - Secret masking with reveal toggle for sensitive variables
+  - Inline editing, add/remove overrides from the Environment tab
+- OS adapter tests for IPv4/IPv6 port detection and shell wrapping
+- Env parser tests for file reading, quote handling, and detection heuristics
 
 ### Changed
+- Port detection checks both IPv4 and IPv6 interfaces (fixes Next.js IPv6 binding)
+- Subdomain routing returns direct `localhost:{port}` URLs unless portless mode is active
+- Process manager uses `globalThis` singleton + detached spawning + DB rehydration to survive page refreshes
 
 ### Fixed
-
-### Deprecated
-
-### Removed
-
-### Security
+- Services no longer appear stopped after browser refresh (process rehydration)
+- Correct URL shown after starting a project (direct port instead of stale subdomain proxy)
+- Port conflict false negatives when service binds on `::` (IPv6)
+- Timer leak in process stop escalation path
+- SQL NULL handling in env override queries
