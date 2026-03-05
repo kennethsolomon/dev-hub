@@ -20,8 +20,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   const ids = runs.map(r => r.id);
-  if (ids.length > 0) {
-    db.prepare(`DELETE FROM runs WHERE id IN (${ids.map(() => '?').join(',')})`).run(...ids);
+  // Batch deletes to stay under SQLite's 999 variable limit
+  for (let i = 0; i < ids.length; i += 500) {
+    const batch = ids.slice(i, i + 500);
+    db.prepare(`DELETE FROM runs WHERE id IN (${batch.map(() => '?').join(',')})`).run(...batch);
   }
 
   return NextResponse.json({ deleted: ids.length });
