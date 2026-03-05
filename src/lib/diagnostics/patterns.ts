@@ -14,14 +14,14 @@ export interface ErrorPattern {
 export const ERROR_PATTERNS: ErrorPattern[] = [
   {
     id: 'native-module-mismatch',
-    regex: /NODE_MODULE_VERSION \d+.*(?:requires|needs).*NODE_MODULE_VERSION \d+/i,
+    regex: /NODE_MODULE_VERSION \d+/i,
     title: 'Native Module Version Mismatch',
     description:
       'A native Node.js module was compiled against a different Node.js version than the one currently running.',
     steps: [
       'Stop the service if running.',
-      'Run `npm rebuild` in the project directory to recompile native modules.',
-      'If that fails, delete node_modules and reinstall: `rm -rf node_modules && npm install`.',
+      'Rebuild native modules: `npm rebuild` (or `pnpm rebuild` / `yarn rebuild`).',
+      'If that fails, delete node_modules and reinstall.',
       'Restart the service.',
     ],
     quickfix: {

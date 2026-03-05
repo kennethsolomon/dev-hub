@@ -15,6 +15,8 @@ import { EnvPanel } from '@/components/projects/env-panel';
 import { ArrowLeft, ExternalLink, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { ProjectTerminal } from '@/components/terminal/project-terminal';
+import { useLogStream } from '@/lib/hooks/use-log-stream';
+import { useTerminal } from '@/lib/hooks/use-terminal';
 
 interface ProjectData {
   project: {
@@ -64,6 +66,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const [startingAll, setStartingAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
   const [addingService, setAddingService] = useState(false);
+  const terminal = useTerminal(projectId);
+  const logStream = useLogStream();
 
   const hasRunningServices = data?.runs?.some((r: any) => r.status === 'running') ?? false;
   useEffect(() => {
@@ -367,7 +371,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           </TabsContent>
 
           <TabsContent value="logs" className="mt-6">
-            <LogViewer services={services} runs={runs} projectId={projectId} />
+            <LogViewer services={services} runs={runs} projectId={projectId} logs={logStream.logs} connected={logStream.connected} clearLogs={logStream.clear} onRunsChanged={refetch} />
           </TabsContent>
 
           <TabsContent value="preflight" className="mt-6">
@@ -383,7 +387,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           </TabsContent>
 
           <TabsContent value="terminal" className="mt-6">
-            <ProjectTerminal projectId={projectId} projectPath={project.path} />
+            <ProjectTerminal projectPath={project.path} entries={terminal.entries} setEntries={terminal.setEntries} running={terminal.running} runningCommand={terminal.runningCommand} onRunCommand={terminal.runCommand} />
           </TabsContent>
         </Tabs>
       </div>

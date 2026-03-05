@@ -123,6 +123,12 @@ The complete development workflow from idea to merge:
 - If skipping `/frontend-design`, go directly from `/brainstorm` to `/write-plan`
 - `/write-plan` should reference both the brainstorm findings AND any frontend design outputs when writing the implementation plan
 
+## Core Principles
+
+- **Simplicity First**: Minimal code impact. Obvious solution wins.
+- **No Laziness**: Find root causes. Senior engineer standards.
+- **Minimal Impact**: Only touch what's necessary. Don't introduce bugs.
+
 ## Architectural Change Log
 
 Create entries in: `.claude/docs/architectural_change_log/`

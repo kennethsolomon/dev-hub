@@ -1,45 +1,40 @@
-# TODO — 2026-03-05 — Button & Action Feedback (UX)
+# TODO — 2026-03-06 — Persistent Logs & Terminal
 
 ## Goal
-Add loading states and inline feedback to all async action buttons across the app, so users always know an action is in progress and can't accidentally double-trigger it.
+Make log viewer and terminal state survive tab switches within ProjectDetail. Add timestamps to Previous Runs, and add delete options for log history.
 
 ## Plan
 
-### Phase 1: Dashboard (`src/components/dashboard/dashboard.tsx`)
-- [x] Add `startingId`, `stoppingId`, `deletingId` (string | null) and `importing`, `refreshing` (boolean) states
-- [x] Start/Stop buttons: show `Loader2` spinner + "Starting..."/"Stopping..." text, disable during call
-- [x] Import Project button: show spinner + "Importing..." text, disable during call
-- [x] Remove button: show spinner + "Removing..." text, disable during call
-- [x] Refresh icon button: add `animate-spin` to `RefreshCw` icon while fetching
+### Phase 1: API — Delete log runs
+- [x] Add `DELETE` handler to `src/app/api/logs/[runId]/route.ts` — delete run record from DB + remove log file from disk; skip if run status is `running`
+- [x] Add `DELETE /api/projects/[id]/logs` route — delete all non-running runs for the project + their log files; return `{ deleted: count }`
 
-### Phase 2: ServiceCard (`src/components/services/service-card.tsx`)
-- [x] Add `starting`, `stopping`, `saving`, `deleting` boolean states
-- [x] Start/Stop: spinner + "Starting..."/"Stopping...", disabled
-- [x] Save: spinner + "Saving...", disabled
-- [x] Delete: spinner + "Removing...", disabled
+### Phase 2: Lift log state to ProjectDetail
+- [x] In `project-detail.tsx`, call `useLogStream()` at the component level (above `<Tabs>`)
+- [x] Pass `logs`, `connected`, `clear` as props to `LogViewer`
+- [x] Update `LogViewer` props interface to accept `logs`, `connected`, `clear` instead of calling `useLogStream` internally
 
-### Phase 3: ProjectDetail (`src/components/projects/project-detail.tsx`)
-- [x] Add `startingAll`, `stoppingAll`, `addingService` boolean states
-- [x] Start All / Stop All: spinner + "Starting..."/"Stopping...", disabled
-- [x] Add Service dialog "Add" button: spinner + "Adding...", disabled
-- [x] ConfigPanel: add `saving` state, Save Changes button shows spinner + "Saving...", disabled
+### Phase 3: Lift terminal state to ProjectDetail
+- [x] In `project-detail.tsx`, add `terminalEntries` + `setTerminalEntries` state
+- [x] Pass `entries` + `setEntries` as props to `ProjectTerminal`
+- [x] Update `ProjectTerminal` to accept entries/setEntries via props, remove internal `useState<TerminalEntry[]>`
 
-### Phase 4: EnvPanel (`src/components/projects/env-panel.tsx`)
-- [x] Add `savingKey`, `removingKey` (string | null), `refreshing` (boolean) states
-- [x] Save override: spinner + "Saving...", disabled
-- [x] Remove override: spinner + "Removing...", disabled
-- [x] Refresh button: spinner + "Refreshing..." text, disabled
-- [x] Add Override dialog: spinner + "Adding...", disabled
+### Phase 4: Enhance Previous Runs UI
+- [x] Render `started_at` timestamp on each Previous Run entry (format as relative or short datetime)
+- [x] Render `stopped_at` or duration if available
+- [x] Add per-run delete button (trash icon) — calls `DELETE /api/logs/[runId]`, removes from local `runs` list
+- [x] Add "Clear All Logs" button — calls `DELETE /api/projects/[id]/logs`, refetches project data
 
 ### Phase 5: Verification
-- [x] `npx tsc --noEmit` — no new type errors (pre-existing error in checks.test.ts)
+- [x] `npx tsc --noEmit` — no new type errors
+- [x] `npm test` — all 93 tests pass
 - [x] `npm run build` — builds successfully
-- [x] `npm test` — all 71 tests pass
+- [ ] Manual: switch between tabs, confirm logs and terminal entries persist
 
 ## Acceptance Criteria
-- [x] Every async button shows a Loader2 spinner + changed label while its action is in flight
-- [x] Every async button is disabled during its action (no double-clicks)
-- [x] Per-row actions (Dashboard start/stop, EnvPanel save/remove) only affect the clicked row's button
-- [x] Refresh/icon-only buttons spin their icon during fetch
-- [x] No layout shift when buttons transition between idle and loading states
+- [x] Switching from Logs tab to Services tab and back retains all live log entries
+- [x] Switching from Terminal tab to another tab and back retains all terminal entries
+- [x] Previous Runs section shows timestamps (when each run started)
+- [x] Each previous run has a delete button that removes the run + log file
+- [x] "Clear All Logs" button removes all non-running runs and their files
 - [x] No type errors, build succeeds, all tests pass

@@ -7,6 +7,12 @@ import { requireAuth } from '@/lib/auth/session';
 import { getProcessManager } from '@/lib/process/manager';
 import { execAsync } from '@/lib/os/exec';
 
+function detectPackageManager(projectPath: string): 'pnpm' | 'yarn' | 'npm' {
+  if (fs.existsSync(path.join(projectPath, 'pnpm-lock.yaml'))) return 'pnpm';
+  if (fs.existsSync(path.join(projectPath, 'yarn.lock'))) return 'yarn';
+  return 'npm';
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAuth())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -31,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     case 'install-deps': {
       try {
-        const cmd = project.type === 'laravel' ? 'composer install' : 'npm install';
+        const cmd = project.type === 'laravel' ? 'composer install' : `${detectPackageManager(project.path)} install`;
         await execAsync(`/bin/zsh -lc '${cmd}'`, { cwd: project.path, timeout: 120000, encoding: 'utf-8' });
         return NextResponse.json({ ok: true, message: 'Dependencies installed' });
       } catch (err: any) {
@@ -41,15 +47,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     case 'rebuild-native-modules': {
       try {
-        await execAsync("/bin/zsh -lc 'npm rebuild'", { cwd: project.path, timeout: 120000, encoding: 'utf-8' });
-        return NextResponse.json({ ok: true, message: 'Native modules rebuilt successfully. Restart the service.' });
+        const pm = detectPackageManager(project.path);
+        await execAsync(`/bin/zsh -lc '${pm} rebuild'`, { cwd: project.path, timeout: 120000, encoding: 'utf-8' });
+        return NextResponse.json({ ok: true, message: `Native modules rebuilt with ${pm}. Restart the service.` });
       } catch (err: any) {
-        return NextResponse.json({ error: `npm rebuild failed: ${err.message}` }, { status: 500 });
+        return NextResponse.json({ error: `Rebuild failed: ${err.message}` }, { status: 500 });
       }
     }
 
     case 'reinstall-node-modules': {
       try {
+        const pm = detectPackageManager(project.path);
         const nodeModules = path.join(project.path, 'node_modules');
         if (fs.existsSync(nodeModules)) {
           const realNodeModules = fs.realpathSync(nodeModules);
@@ -59,8 +67,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
           fs.rmSync(nodeModules, { recursive: true, force: true });
         }
-        await execAsync("/bin/zsh -lc 'npm install'", { cwd: project.path, timeout: 300000, encoding: 'utf-8' });
-        return NextResponse.json({ ok: true, message: 'node_modules reinstalled successfully. Restart the service.' });
+        await execAsync(`/bin/zsh -lc '${pm} install'`, { cwd: project.path, timeout: 300000, encoding: 'utf-8' });
+        return NextResponse.json({ ok: true, message: `node_modules reinstalled with ${pm}. Restart the service.` });
       } catch (err: any) {
         return NextResponse.json({ error: `Reinstall failed: ${err.message}` }, { status: 500 });
       }
