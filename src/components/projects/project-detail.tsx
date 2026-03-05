@@ -107,6 +107,13 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
   const anyRunning = services.some(s => runningServiceIds.has(s.id));
 
+  // Compute project URL for display
+  const runningService = status?.running?.find((r: any) => services.some(s => s.id === r.serviceId));
+  const directPort = runningService?.assignedPort;
+  const route = status?.routes?.find((r: any) => r.slug === project.slug);
+  const useSubdomain = route?.url && !route.url.includes(':4400');
+  const projectUrl = useSubdomain ? route.url : (directPort ? `http://localhost:${directPort}` : null);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -129,25 +136,11 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         <Badge variant={anyRunning ? 'default' : 'secondary'}>
           {anyRunning ? 'Running' : 'Stopped'}
         </Badge>
-        {anyRunning && (() => {
-          // Find the actual running port from status data
-          const runningService = status?.running?.find((r: any) =>
-            services.some(s => s.id === r.serviceId)
-          );
-          const directPort = runningService?.assignedPort;
-          const directUrl = directPort ? `http://localhost:${directPort}` : null;
-
-          // Only use subdomain URL in portless mode (Caddy proxy confirmed)
-          const route = status?.routes?.find((r: any) => r.slug === project.slug);
-          const useSubdomain = route?.url && !route.url.includes(':4400');
-          const url = useSubdomain ? route.url : directUrl;
-
-          return url ? (
-            <a href={url} target="_blank" rel="noopener" className="text-sm text-primary hover:underline font-mono">
-              {url}
-            </a>
-          ) : null;
-        })()}
+        {anyRunning && projectUrl && (
+          <a href={projectUrl} target="_blank" rel="noopener" className="text-sm text-primary hover:underline font-mono">
+            {projectUrl}
+          </a>
+        )}
       </div>
 
       <Tabs defaultValue="services">

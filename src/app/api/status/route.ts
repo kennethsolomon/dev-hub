@@ -4,8 +4,6 @@ import { getRoutingTable } from '@/lib/proxy/router';
 
 export async function GET() {
   const pm = getProcessManager();
-  // Rehydrate on first status check to recover from server restarts
-  pm.rehydrateFromDb();
 
   const running = pm.getAllRunning().map(sp => ({
     serviceId: sp.serviceId,

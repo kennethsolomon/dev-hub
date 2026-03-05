@@ -122,19 +122,22 @@ describe('isPortVar', () => {
     expect(isPortVar('port', 'abc')).toBe(true); // key match, value irrelevant
   });
 
-  it('should detect port by numeric value in range', () => {
+  it('should detect port by numeric value in common port ranges', () => {
     expect(isPortVar('SOME_VAR', '8080')).toBe(true);
     expect(isPortVar('MY_SERVICE', '3000')).toBe(true);
-    expect(isPortVar('RANDOM', '65535')).toBe(true);
+    expect(isPortVar('MONGO', '27017')).toBe(true);
     expect(isPortVar('MIN_PORT_RANGE', '1000')).toBe(true);
+    expect(isPortVar('DYNAMIC', '49152')).toBe(true);
   });
 
   it('should not detect non-port values', () => {
     expect(isPortVar('NODE_ENV', 'production')).toBe(false);
-    expect(isPortVar('COUNT', '42')).toBe(false);       // below 1000
-    expect(isPortVar('BIG_NUM', '70000')).toBe(false);  // above 65535
+    expect(isPortVar('COUNT', '42')).toBe(false);         // below 1000
+    expect(isPortVar('BIG_NUM', '70000')).toBe(false);    // above 65535
+    expect(isPortVar('TIMEOUT_MS', '30000')).toBe(false); // not a common port range
+    expect(isPortVar('BATCH_SIZE', '15000')).toBe(false); // not a common port range
     expect(isPortVar('API_URL', 'http://localhost')).toBe(false);
-    expect(isPortVar('FLOAT', '3000.5')).toBe(false);   // not integer
+    expect(isPortVar('FLOAT', '3000.5')).toBe(false);     // not integer
   });
 });
 

@@ -33,13 +33,16 @@ export function resolveSubdomain(hostname: string): RouteTarget | null {
     'SELECT id, assigned_port FROM services WHERE project_id = ? AND is_primary = 1 LIMIT 1'
   ).get(project.id) as any;
 
-  if (!service || !service.assigned_port) return null;
+  if (!service) return null;
 
-  // Check if actually running
+  // Check if actually running and get the real assigned port
   const pm = getProcessManager();
   if (!pm.isRunning(service.id)) return null;
 
-  return { host: '127.0.0.1', port: service.assigned_port };
+  const actualPort = pm.getRunning(service.id)?.assignedPort || service.assigned_port;
+  if (!actualPort) return null;
+
+  return { host: '127.0.0.1', port: actualPort };
 }
 
 export function getRoutingTable(): Array<{

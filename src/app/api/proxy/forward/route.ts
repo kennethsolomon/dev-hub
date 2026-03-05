@@ -41,7 +41,6 @@ async function proxyRequest(req: NextRequest): Promise<NextResponse> {
   }
 
   const pm = getProcessManager();
-  pm.rehydrateFromDb(); // ensure rehydrated after server restart
   if (!pm.isRunning(service.id)) {
     return NextResponse.json({ error: `Service for "${subdomain}" is not running` }, { status: 502 });
   }

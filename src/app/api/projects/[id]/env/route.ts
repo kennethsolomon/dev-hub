@@ -70,17 +70,17 @@ export async function GET(
     });
   }
 
-  // Check port status for port vars
+  // Check port status for port vars (parallel)
   const os = getOsAdapter();
-  for (const v of variables) {
-    if (v.isPort) {
+  const portChecks = variables
+    .map((v, i) => {
+      if (!v.isPort) return null;
       const port = Number(v.effective);
-      if (port >= 1000 && port <= 65535) {
-        const inUse = await os.isPortInUse(port);
-        v.portStatus = inUse ? 'in-use' : 'free';
-      }
-    }
-  }
+      if (port < 1000 || port > 65535) return null;
+      return os.isPortInUse(port).then(inUse => { v.portStatus = inUse ? 'in-use' : 'free'; });
+    })
+    .filter(Boolean);
+  await Promise.all(portChecks);
 
   // Sort: port vars first, then alphabetical
   variables.sort((a, b) => {
@@ -103,7 +103,12 @@ export async function PUT(
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
-  const body = await req.json();
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
   const { key, value, service_id } = body as {
     key: string;
     value: string | null;
@@ -118,16 +123,18 @@ export async function PUT(
 
   if (value === null || value === undefined) {
     // Delete override
-    db.prepare(
-      'DELETE FROM env_overrides WHERE project_id = ? AND key = ? AND (service_id IS ? OR service_id = ?)'
-    ).run(id, key, svcId, svcId);
+    const deleteStmt = svcId
+      ? 'DELETE FROM env_overrides WHERE project_id = ? AND key = ? AND service_id = ?'
+      : 'DELETE FROM env_overrides WHERE project_id = ? AND key = ? AND service_id IS NULL';
+    db.prepare(deleteStmt).run(...(svcId ? [id, key, svcId] : [id, key]));
     return NextResponse.json({ ok: true, action: 'removed', key });
   }
 
   // Upsert override
-  const existing = db.prepare(
-    'SELECT id FROM env_overrides WHERE project_id = ? AND key = ? AND (service_id IS ? OR service_id = ?)'
-  ).get(id, key, svcId, svcId) as any;
+  const selectStmt = svcId
+    ? 'SELECT id FROM env_overrides WHERE project_id = ? AND key = ? AND service_id = ?'
+    : 'SELECT id FROM env_overrides WHERE project_id = ? AND key = ? AND service_id IS NULL';
+  const existing = db.prepare(selectStmt).get(...(svcId ? [id, key, svcId] : [id, key])) as any;
 
   if (existing) {
     db.prepare('UPDATE env_overrides SET value = ? WHERE id = ?').run(String(value), existing.id);

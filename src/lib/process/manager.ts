@@ -245,7 +245,9 @@ class ProcessManager extends EventEmitter {
 
       // Restart policy
       if (service.restart_policy === 'always' || (service.restart_policy === 'on-failure' && code !== 0)) {
-        setTimeout(() => this.startService(serviceId).catch(() => {}), 2000);
+        setTimeout(() => this.startService(serviceId).catch(err => {
+          console.error(`[DevHub] Auto-restart failed for service ${serviceId}:`, err?.message || err);
+        }), 2000);
       }
     });
 
@@ -293,23 +295,26 @@ class ProcessManager extends EventEmitter {
         } catch {
           try { process.kill(pid, stopSignal); } catch {}
         }
-        // Wait a bit for the process to exit
+        // Wait for the process to exit, with escalation timeout
         await new Promise<void>((resolve) => {
-          const check = () => {
+          let resolved = false;
+          const done = () => { if (!resolved) { resolved = true; resolve(); } };
+
+          const pollInterval = setInterval(() => {
             if (!isProcessAlive(pid)) {
-              resolve();
-            } else {
-              setTimeout(check, 500);
+              clearInterval(pollInterval);
+              done();
             }
-          };
-          setTimeout(check, 500);
+          }, 500);
+
           // Escalate after timeout
           setTimeout(() => {
+            clearInterval(pollInterval);
             if (isProcessAlive(pid)) {
               try { process.kill(-pid, 'SIGKILL'); } catch {}
               try { process.kill(pid, 'SIGKILL'); } catch {}
             }
-            resolve();
+            done();
           }, stopTimeout + 3000);
         });
       }

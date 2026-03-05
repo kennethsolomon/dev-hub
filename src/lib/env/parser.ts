@@ -62,10 +62,11 @@ function parseDotenv(content: string): Array<{ key: string; value: string }> {
     const key = stripped.slice(0, eqIndex).trim();
     let value = stripped.slice(eqIndex + 1).trim();
 
-    // Remove surrounding quotes
+    // Remove surrounding quotes (must be matching pair, length > 1)
     if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+       (value.startsWith("'") && value.endsWith("'")))
     ) {
       value = value.slice(1, -1);
     }
@@ -80,14 +81,21 @@ function parseDotenv(content: string): Array<{ key: string; value: string }> {
 
 const PORT_KEY_PATTERN = /port/i;
 const SECRET_KEY_PATTERN = /(secret|key|token|password|private|credential)/i;
+// Common port ranges: avoid flagging arbitrary numbers like TIMEOUT_MS=30000
+const PORT_VALUE_RANGES = [
+  [1000, 9999],   // common dev ports
+  [27017, 27017], // MongoDB
+  [49152, 65535],  // dynamic/private ports
+] as const;
 
 /**
- * Detect if a variable is a port based on key name or numeric value.
+ * Detect if a variable is a port based on key name or numeric value in common port ranges.
  */
 export function isPortVar(key: string, value: string): boolean {
   if (PORT_KEY_PATTERN.test(key)) return true;
   const num = Number(value);
-  return Number.isInteger(num) && num >= 1000 && num <= 65535;
+  if (!Number.isInteger(num)) return false;
+  return PORT_VALUE_RANGES.some(([min, max]) => num >= min && num <= max);
 }
 
 /**
