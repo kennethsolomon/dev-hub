@@ -55,7 +55,6 @@ export function getRoutingTable(): Array<{
   const db = getDb();
   const baseDomain = (db.prepare("SELECT value FROM settings WHERE key = 'base_domain'").get() as any)?.value || 'localhost';
   const subdomainRouting = (db.prepare("SELECT value FROM settings WHERE key = 'subdomain_routing'").get() as any)?.value === 'true';
-  const proxyPort = (db.prepare("SELECT value FROM settings WHERE key = 'proxy_port'").get() as any)?.value || '4400';
   const portlessMode = (db.prepare("SELECT value FROM settings WHERE key = 'portless_mode'").get() as any)?.value === 'true';
 
   const projects = db.prepare(`

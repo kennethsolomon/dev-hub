@@ -272,19 +272,23 @@ class ProcessManager extends EventEmitter {
         os.killProcess(pid, stopSignal);
 
         await new Promise<void>((resolve) => {
-          const timer = setTimeout(() => {
+          let resolved = false;
+          const done = () => { if (!resolved) { resolved = true; resolve(); } };
+
+          const escalationTimer = setTimeout(() => {
             os.killProcess(pid, 'SIGTERM');
-            setTimeout(() => {
+            const killTimer = setTimeout(() => {
               if (this.running.has(serviceId)) {
                 os.killProcess(pid, 'SIGKILL');
               }
-              resolve();
+              done();
             }, 3000);
+            killTimer.unref();
           }, stopTimeout);
 
           sp.process!.once('exit', () => {
-            clearTimeout(timer);
-            resolve();
+            clearTimeout(escalationTimer);
+            done();
           });
         });
       } else {

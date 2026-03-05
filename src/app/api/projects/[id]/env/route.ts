@@ -73,7 +73,7 @@ export async function GET(
   // Check port status for port vars (parallel)
   const os = getOsAdapter();
   const portChecks = variables
-    .map((v, i) => {
+    .map((v) => {
       if (!v.isPort) return null;
       const port = Number(v.effective);
       if (port < 1000 || port > 65535) return null;
