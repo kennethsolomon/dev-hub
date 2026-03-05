@@ -1,36 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DevHub - Local Development Manager
 
-## Getting Started
+A local-first web app to manage your macOS development projects from one dashboard.
 
-First, run the development server:
+## Features
+
+- **Project Discovery** - Auto-scan workspace roots for Node, Laravel, and Expo projects
+- **Multi-Service Orchestration** - Define multiple services per project with dependency ordering, readiness checks, and restart policies
+- **Port Conflict Handling** - Automatic free port assignment when desired ports are busy, with clear notifications
+- **Subdomain Routing** - Access projects via `http://myapp.localhost` (portless mode with Caddy, or `http://myapp.localhost:4400` without)
+- **Stacks** - Group projects for one-click start/stop
+- **Preflight Checks** - Detect missing `.env`, uninstalled deps, wrong Node/PHP versions, port conflicts
+- **Unified Logs** - Per-service and combined log streaming with search, filter, and error highlighting
+- **Update Advisor** - Scan `npm outdated` / `composer outdated`, flag major updates, track upgrade notes
+- **Passcode Auth** - Simple bcrypt-based authentication with httpOnly cookie sessions
+
+## Tech Stack
+
+- Next.js (TypeScript, App Router)
+- shadcn/ui + Tailwind CSS v4
+- SQLite (via better-sqlite3)
+- SSE for real-time log streaming
+
+## Setup
 
 ```bash
+# Install dependencies
+npm install
+
+# Run in development
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+DevHub runs on `http://localhost:3000` by default.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Workspace Roots
 
-## Learn More
+Go to **Settings > Workspace Roots** and add directories to scan. DevHub will auto-discover:
+- Node/JS projects (has `package.json`)
+- Laravel projects (has `artisan` + `composer.json`)
+- Expo/React Native projects (has `app.json` + expo dependency)
 
-To learn more about Next.js, take a look at the following resources:
+### Subdomain Routing
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Access projects via `http://<slug>.localhost:4400` (default proxy port).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To remove the port from URLs (portless mode):
 
-## Deploy on Vercel
+1. Install Caddy: `brew install caddy`
+2. Run the install script with sudo:
+   ```bash
+   sudo ./scripts/install-portless.sh
+   ```
+3. Enable "Portless Mode" in Settings
+4. Access projects at `http://<slug>.localhost`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+To uninstall portless mode:
+```bash
+sudo ./scripts/uninstall-portless.sh
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### devhub.yml
+
+Projects can include a `devhub.yml` config file for auto-import:
+
+```yaml
+services:
+  - name: dev
+    command: npm run dev
+    port: 3000
+    primary: true
+  - name: worker
+    command: npm run worker
+    dependsOn: [dev]
+  - name: redis
+    command: redis-server
+    port: 6379
+    readiness:
+      type: tcp
+      port: 6379
+```
+
+### Security
+
+- **Default**: Binds to `localhost` only (127.0.0.1)
+- **LAN Mode**: Toggle in Settings to bind to 0.0.0.0 (enables network access)
+- **Passcode**: Set in Settings; required when LAN mode is active
+
+## Running Tests
+
+```bash
+npm test           # Run once
+npm run test:watch # Watch mode
+```
+
+## Data Storage
+
+All data is stored in `data/devhub.db` (SQLite) and `data/logs/` (log files).
+The `data/` directory is gitignored.
+
+## Architecture
+
+```
+src/
+  app/                    # Next.js App Router pages + API routes
+  components/             # React components (shadcn/ui)
+  lib/
+    db/                   # SQLite database + migrations
+    os/                   # OS adapter layer (macOS-first, cross-platform ready)
+    process/              # Process manager + port allocator
+    proxy/                # Subdomain router + Caddyfile generator
+    discovery/            # Project scanner
+    toolchain/            # Node/PHP version detection
+    updates/              # npm/composer outdated advisor
+    preflight/            # Pre-start checks
+    auth/                 # Passcode + session management
+    hooks/                # React hooks for API + log streaming
+scripts/
+  install-portless.sh     # Caddy setup (requires sudo)
+  uninstall-portless.sh   # Caddy teardown
+```
