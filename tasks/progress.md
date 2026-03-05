@@ -171,3 +171,16 @@
     - Phase 5: Services tab shows count, Logs tab shows green dot when services running
   - Updated `src/components/services/service-card.tsx` — citrine left border glow for running services (`border-l-[3px] border-l-primary bg-primary/[0.02]`)
   - Verification: `npx tsc --noEmit` -> PASS, `npm test` -> 52 pass, `npm run build` -> PASS
+
+---
+
+## Session: 2026-03-06 — Button & Action Feedback (UX)
+
+## Work Log
+
+- 2026-03-06 — All phases complete (single batch)
+  - Updated `src/components/dashboard/dashboard.tsx` — added Loader2 import, 5 loading states (startingId, stoppingId, deletingId, importing, refreshing), spinner+label on Start/Stop/Import/Remove buttons, animate-spin on RefreshCw
+  - Updated `src/components/services/service-card.tsx` — added Loader2 import, 4 loading states (starting, stopping, saving, deleting), spinner+label on all action buttons
+  - Updated `src/components/projects/project-detail.tsx` — added Loader2 import, 3 loading states (startingAll, stoppingAll, addingService), spinner+label on Start All/Stop All/Add buttons, ConfigPanel saving state, updated AddServiceDialog props
+  - Updated `src/components/projects/env-panel.tsx` — added Loader2 import, 4 loading states (savingKey, removingKey, refreshing, adding), spinner+label on Save/Remove/Refresh/Add Override buttons, passed isSaving/isRemoving to EnvRow
+  - Verification: `npx tsc --noEmit` -> PASS (pre-existing error in checks.test.ts), `npm test` -> 71 pass, `npm run build` -> PASS

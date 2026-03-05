@@ -12,7 +12,7 @@ import { LogViewer } from '@/components/logs/log-viewer';
 import { PreflightPanel } from '@/components/projects/preflight-panel';
 import { ServiceCard } from '@/components/services/service-card';
 import { EnvPanel } from '@/components/projects/env-panel';
-import { ArrowLeft, ExternalLink, Clock } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { ProjectTerminal } from '@/components/terminal/project-terminal';
 
@@ -61,6 +61,9 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const [addServiceOpen, setAddServiceOpen] = useState(false);
   const [newService, setNewService] = useState({ name: '', command: '', desired_port: '', is_primary: false });
   const [now, setNow] = useState(Date.now());
+  const [startingAll, setStartingAll] = useState(false);
+  const [stoppingAll, setStoppingAll] = useState(false);
+  const [addingService, setAddingService] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -110,6 +113,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const runningServiceIds = new Set(status?.running?.map((r: any) => r.serviceId) || []);
 
   const handleStartAll = async () => {
+    setStartingAll(true);
     try {
       const results = await apiPost(`/api/projects/${projectId}/start`);
       for (const r of results) {
@@ -131,10 +135,13 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       }
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setStartingAll(false);
     }
   };
 
   const handleStopAll = async () => {
+    setStoppingAll(true);
     try {
       await apiPost(`/api/projects/${projectId}/stop`);
       toast.success('All services stopped');
@@ -142,10 +149,13 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       refetchStatus();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setStoppingAll(false);
     }
   };
 
   const handleAddService = async () => {
+    setAddingService(true);
     try {
       await apiPost('/api/services', {
         project_id: projectId,
@@ -160,6 +170,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       refetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setAddingService(false);
     }
   };
 
@@ -209,9 +221,15 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         </div>
         <div className="flex gap-2">
           {anyRunning ? (
-            <Button variant="destructive" onClick={handleStopAll}>Stop All</Button>
+            <Button variant="destructive" disabled={stoppingAll} onClick={handleStopAll}>
+              {stoppingAll && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {stoppingAll ? 'Stopping...' : 'Stop All'}
+            </Button>
           ) : (
-            <Button onClick={handleStartAll}>Start All</Button>
+            <Button disabled={startingAll} onClick={handleStartAll}>
+              {startingAll && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {startingAll ? 'Starting...' : 'Start All'}
+            </Button>
           )}
         </div>
       </div>
@@ -325,6 +343,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                     newService={newService}
                     setNewService={setNewService}
                     handleAddService={handleAddService}
+                    adding={addingService}
                   />
                 </Dialog>
               </div>
@@ -338,6 +357,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                     newService={newService}
                     setNewService={setNewService}
                     handleAddService={handleAddService}
+                    adding={addingService}
                   />
                 </Dialog>
               </div>
@@ -373,10 +393,12 @@ function AddServiceDialog({
   newService,
   setNewService,
   handleAddService,
+  adding,
 }: {
   newService: { name: string; command: string; desired_port: string; is_primary: boolean };
   setNewService: React.Dispatch<React.SetStateAction<{ name: string; command: string; desired_port: string; is_primary: boolean }>>;
   handleAddService: () => void;
+  adding: boolean;
 }) {
   return (
     <DialogContent>
@@ -400,7 +422,10 @@ function AddServiceDialog({
           <input type="checkbox" checked={newService.is_primary} onChange={e => setNewService(s => ({ ...s, is_primary: e.target.checked }))} />
           Primary service (receives subdomain traffic)
         </label>
-        <Button onClick={handleAddService} disabled={!newService.name || !newService.command}>Add</Button>
+        <Button onClick={handleAddService} disabled={!newService.name || !newService.command || adding}>
+          {adding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+          {adding ? 'Adding...' : 'Add'}
+        </Button>
       </div>
     </DialogContent>
   );
@@ -409,14 +434,18 @@ function AddServiceDialog({
 function ConfigPanel({ project, onUpdate, onDelete }: { project: any; onUpdate: () => void; onDelete: () => void }) {
   const [name, setName] = useState(project.name);
   const [slug, setSlug] = useState(project.slug);
+  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    setSaving(true);
     try {
       await apiPut(`/api/projects/${project.id}`, { name, slug });
       toast.success('Project updated');
       onUpdate();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -446,7 +475,10 @@ function ConfigPanel({ project, onUpdate, onDelete }: { project: any; onUpdate: 
             <label className="text-sm font-medium">Type</label>
             <Input value={project.type} disabled />
           </div>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button disabled={saving} onClick={handleSave}>
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface EnvVariable {
@@ -32,6 +33,10 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
   const [addOpen, setAddOpen] = useState(false);
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [removingKey, setRemovingKey] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const handleEdit = (v: EnvVariable) => {
     setEditingKey(v.key);
@@ -39,6 +44,7 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
   };
 
   const handleSave = async (key: string) => {
+    setSavingKey(key);
     try {
       await apiPut(`/api/projects/${projectId}/env`, { key, value: editValue });
       toast.success(`Override saved for ${key}`);
@@ -46,21 +52,27 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
       refetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setSavingKey(null);
     }
   };
 
   const handleRemoveOverride = async (key: string) => {
+    setRemovingKey(key);
     try {
       await apiPut(`/api/projects/${projectId}/env`, { key, value: null });
       toast.success(`Override removed for ${key}`);
       refetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setRemovingKey(null);
     }
   };
 
   const handleAdd = async () => {
     if (!newKey.trim()) return;
+    setAdding(true);
     try {
       await apiPut(`/api/projects/${projectId}/env`, { key: newKey.trim(), value: newValue });
       toast.success(`Added override for ${newKey}`);
@@ -70,6 +82,8 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
       refetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -105,7 +119,13 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
           </p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => refetch()}>Refresh</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={refreshing} onClick={async () => {
+            setRefreshing(true);
+            try { await refetch(); } finally { setRefreshing(false); }
+          }}>
+            {refreshing && <Loader2 className="w-3 h-3 animate-spin" />}
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="h-7 text-xs">Add Override</Button>
@@ -133,7 +153,10 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
                     className="font-mono"
                   />
                 </div>
-                <Button onClick={handleAdd} disabled={!newKey.trim()}>Add Override</Button>
+                <Button onClick={handleAdd} disabled={!newKey.trim() || adding}>
+                  {adding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {adding ? 'Adding...' : 'Add Override'}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -164,6 +187,8 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
                 isEditing={editingKey === v.key}
                 editValue={editValue}
                 isRevealed={revealedKeys.has(v.key)}
+                isSaving={savingKey === v.key}
+                isRemoving={removingKey === v.key}
                 onEdit={() => handleEdit(v)}
                 onEditValueChange={setEditValue}
                 onSave={() => handleSave(v.key)}
@@ -185,6 +210,8 @@ function EnvRow({
   isEditing,
   editValue,
   isRevealed,
+  isSaving,
+  isRemoving,
   onEdit,
   onEditValueChange,
   onSave,
@@ -197,6 +224,8 @@ function EnvRow({
   isEditing: boolean;
   editValue: string;
   isRevealed: boolean;
+  isSaving: boolean;
+  isRemoving: boolean;
   onEdit: () => void;
   onEditValueChange: (val: string) => void;
   onSave: () => void;
@@ -237,8 +266,11 @@ function EnvRow({
           }}
         />
         <div className="flex gap-1 w-[140px]">
-          <Button size="sm" variant="default" className="h-7 text-xs" onClick={onSave}>Save</Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
+          <Button size="sm" variant="default" className="h-7 text-xs" disabled={isSaving} onClick={onSave}>
+            {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={isSaving} onClick={onCancel}>Cancel</Button>
         </div>
       </div>
     );
@@ -274,8 +306,9 @@ function EnvRow({
           </Button>
         )}
         {v.override !== null && (
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={onRemoveOverride}>
-            Remove
+          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" disabled={isRemoving} onClick={onRemoveOverride}>
+            {isRemoving && <Loader2 className="w-3 h-3 animate-spin" />}
+            {isRemoving ? 'Removing...' : 'Remove'}
           </Button>
         )}
       </div>

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Search, X, RefreshCw } from 'lucide-react';
+import { Search, X, RefreshCw, Loader2 } from 'lucide-react';
 
 interface ProjectRow {
   id: string;
@@ -34,6 +34,11 @@ export function Dashboard() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'running' | 'stopped'>('all');
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [stoppingId, setStoppingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const runningServiceIds = new Set(status?.running?.map(r => r.serviceId) || []);
   const routeMap = new Map(status?.routes?.map(r => [r.slug, r]) || []);
@@ -45,6 +50,7 @@ export function Dashboard() {
   const runningProjectCount = projects?.filter(p => routeMap.get(p.slug)?.running).length || 0;
 
   const handleAdd = async () => {
+    setImporting(true);
     try {
       await apiPost('/api/projects', { action: 'import', path: addPath });
       toast.success('Project imported');
@@ -53,10 +59,13 @@ export function Dashboard() {
       refetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setImporting(false);
     }
   };
 
   const handleStartProject = async (projectId: string) => {
+    setStartingId(projectId);
     try {
       const results = await apiPost(`/api/projects/${projectId}/start`);
       for (const r of results) {
@@ -77,27 +86,35 @@ export function Dashboard() {
       }
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setStartingId(null);
     }
   };
 
   const handleStopProject = async (projectId: string) => {
+    setStoppingId(projectId);
     try {
       await apiPost(`/api/projects/${projectId}/stop`);
       toast.success('Project stopped');
       refetchStatus();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setStoppingId(null);
     }
   };
 
   const handleDelete = async (projectId: string) => {
     if (!confirm('Delete this project from DevHub?')) return;
+    setDeletingId(projectId);
     try {
       await apiDelete(`/api/projects/${projectId}`);
       toast.success('Project removed');
       refetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -145,8 +162,11 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => { refetch(); refetchStatus(); }}>
-            <RefreshCw className="w-3.5 h-3.5" />
+          <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={refreshing} onClick={async () => {
+            setRefreshing(true);
+            try { await Promise.all([refetch(), refetchStatus()]); } finally { setRefreshing(false); }
+          }}>
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
@@ -165,8 +185,9 @@ export function Dashboard() {
                     onChange={e => setAddPath(e.target.value)}
                   />
                 </div>
-                <Button onClick={handleAdd} disabled={!addPath}>
-                  Import Project
+                <Button onClick={handleAdd} disabled={!addPath || importing}>
+                  {importing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {importing ? 'Importing...' : 'Import Project'}
                 </Button>
               </div>
             </DialogContent>
@@ -329,12 +350,14 @@ export function Dashboard() {
                 {/* Right: actions */}
                 <div className="flex items-center gap-2 shrink-0">
                   {isRunning ? (
-                    <Button size="sm" variant="destructive" onClick={() => handleStopProject(project.id)}>
-                      Stop
+                    <Button size="sm" variant="destructive" disabled={stoppingId === project.id} onClick={() => handleStopProject(project.id)}>
+                      {stoppingId === project.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {stoppingId === project.id ? 'Stopping...' : 'Stop'}
                     </Button>
                   ) : (
-                    <Button size="sm" onClick={() => handleStartProject(project.id)}>
-                      Start
+                    <Button size="sm" disabled={startingId === project.id} onClick={() => handleStartProject(project.id)}>
+                      {startingId === project.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {startingId === project.id ? 'Starting...' : 'Start'}
                     </Button>
                   )}
                   <Link href={`/projects/${project.id}`}>
@@ -344,9 +367,11 @@ export function Dashboard() {
                     size="sm"
                     variant="ghost"
                     className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    disabled={deletingId === project.id}
                     onClick={() => handleDelete(project.id)}
                   >
-                    Remove
+                    {deletingId === project.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {deletingId === project.id ? 'Removing...' : 'Remove'}
                   </Button>
                 </div>
               </div>
