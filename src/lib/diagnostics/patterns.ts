@@ -46,7 +46,7 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
   },
   {
     id: 'port-in-use',
-    regex: /EADDRINUSE[^]*?(?:port\s*[:=]?\s*(\d+)|:(\d+))/i,
+    regex: /EADDRINUSE.*?(?:port\s*[:=]?\s*(\d+)|:(\d+))/i,
     title: 'Port Already In Use',
     description: 'The requested port is already occupied by another process.',
     steps: [
@@ -57,7 +57,7 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
   },
   {
     id: 'permission-denied',
-    regex: /EACCES[^]*?permission denied/i,
+    regex: /EACCES.*?permission denied/i,
     title: 'Permission Denied',
     description: 'The process does not have permission to access a file or resource.',
     steps: [

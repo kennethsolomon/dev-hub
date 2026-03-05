@@ -54,7 +54,7 @@ export function ErrorDiagnostic({ pattern, projectId, onFixApplied }: ErrorDiagn
           <Button
             size="sm"
             variant="outline"
-            className="shrink-0 border-[var(--color-primary)]/40 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 text-xs"
+            className="shrink-0 border-primary/40 text-primary hover:bg-primary/10 text-xs"
             disabled={fixing}
             onClick={handleFix}
           >

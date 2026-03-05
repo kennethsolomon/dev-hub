@@ -22,9 +22,12 @@ export function LogViewer({ services, runs, projectId }: LogViewerProps) {
   const [showHistorical, setShowHistorical] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const filteredLogs = search
-    ? logs.filter(l => l.text.toLowerCase().includes(search.toLowerCase()))
-    : logs;
+  const filteredLogs = useMemo(() =>
+    search
+      ? logs.filter(l => l.text.toLowerCase().includes(search.toLowerCase()))
+      : logs,
+    [logs, search]
+  );
 
   // Compute which log indices should show diagnostics (first occurrence only)
   const diagnosticMap = useMemo(() => {
