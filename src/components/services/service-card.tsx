@@ -5,6 +5,7 @@ import { apiPost, apiPut, apiDelete } from '@/lib/hooks/use-api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ServiceCardProps {
@@ -25,8 +26,13 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
   const [editing, setEditing] = useState(false);
   const [command, setCommand] = useState(service.command);
   const [desiredPort, setDesiredPort] = useState(String(service.desired_port || ''));
+  const [starting, setStarting] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleStart = async () => {
+    setStarting(true);
     try {
       const result = await apiPost(`/api/services/${service.id}/start`);
       if (result.portConflict) {
@@ -48,20 +54,26 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
       onRefetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setStarting(false);
     }
   };
 
   const handleStop = async () => {
+    setStopping(true);
     try {
       await apiPost(`/api/services/${service.id}/stop`);
       toast.success(`${service.name} stopped`);
       onRefetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setStopping(false);
     }
   };
 
   const handleSave = async () => {
+    setSaving(true);
     try {
       await apiPut(`/api/services/${service.id}`, {
         command,
@@ -72,17 +84,22 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
       onRefetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDelete = async () => {
     if (!confirm(`Delete service "${service.name}"?`)) return;
+    setDeleting(true);
     try {
       await apiDelete(`/api/services/${service.id}`);
       toast.success('Service deleted');
       onRefetch();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -105,15 +122,18 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
           <Input value={desiredPort} onChange={e => setDesiredPort(e.target.value)} placeholder="auto" />
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={handleSave}>Save</Button>
-          <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+          <Button size="sm" disabled={saving} onClick={handleSave}>
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+          <Button size="sm" variant="outline" disabled={saving} onClick={() => setEditing(false)}>Cancel</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="group flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-all duration-150 hover:border-primary/15">
+    <div className={`group flex items-center justify-between rounded-xl border bg-card px-4 py-3 transition-all duration-150 hover:border-primary/15 ${isRunning ? 'border-l-[3px] border-l-primary bg-primary/[0.02] border-border' : 'border-border'}`}>
       {/* Left: status + name + command */}
       <div className="flex items-center gap-3 min-w-0">
         <div className={`w-2 h-2 rounded-full shrink-0 ${isRunning ? 'bg-green-500 animate-pulse-ring' : 'bg-zinc-600'}`} />
@@ -162,12 +182,21 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
         )}
         <div className="flex gap-1.5">
           {isRunning ? (
-            <Button size="sm" variant="destructive" onClick={handleStop}>Stop</Button>
+            <Button size="sm" variant="destructive" disabled={stopping} onClick={handleStop}>
+              {stopping && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {stopping ? 'Stopping...' : 'Stop'}
+            </Button>
           ) : (
-            <Button size="sm" onClick={handleStart}>Start</Button>
+            <Button size="sm" disabled={starting} onClick={handleStart}>
+              {starting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {starting ? 'Starting...' : 'Start'}
+            </Button>
           )}
           <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" onClick={() => setEditing(true)}>Edit</Button>
-          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive" onClick={handleDelete}>Delete</Button>
+          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive" disabled={deleting} onClick={handleDelete}>
+            {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {deleting ? 'Removing...' : 'Delete'}
+          </Button>
         </div>
       </div>
     </div>

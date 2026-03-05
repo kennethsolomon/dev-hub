@@ -143,6 +143,11 @@
   }
 }
 
+@keyframes terminal-bounce {
+  0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
 /* ── Base styles ── */
 @layer base {
   * {
@@ -176,5 +181,12 @@
   }
   .animate-pulse-ring {
     animation: pulse-ring 2s infinite;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

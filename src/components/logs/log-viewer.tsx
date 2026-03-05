@@ -1,23 +1,49 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useLogStream, LogEntry } from '@/lib/hooks/use-log-stream';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { matchErrorPatterns } from '@/lib/diagnostics/patterns';
+import { ErrorDiagnostic } from './error-diagnostic';
 
 interface LogViewerProps {
   services: Array<{ id: string; name: string }>;
   runs: Array<{ id: string; service_id: string; status: string; log_path: string | null }>;
+  projectId?: string;
 }
 
-export function LogViewer({ services, runs }: LogViewerProps) {
+export function LogViewer({ services, runs, projectId }: LogViewerProps) {
   const [selectedService, setSelectedService] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
   const { logs, connected, clear } = useLogStream(selectedService);
   const [historicalLogs, setHistoricalLogs] = useState<string>('');
   const [showHistorical, setShowHistorical] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const filteredLogs = useMemo(() =>
+    search
+      ? logs.filter(l => l.text.toLowerCase().includes(search.toLowerCase()))
+      : logs,
+    [logs, search]
+  );
+
+  // Compute which log indices should show diagnostics (first occurrence only)
+  const diagnosticMap = useMemo(() => {
+    const seen = new Set<string>();
+    const map = new Map<number, import('@/lib/diagnostics/patterns').ErrorPattern[]>();
+    filteredLogs.forEach((entry, i) => {
+      const matches = matchErrorPatterns(entry.text);
+      const newMatches = matches.filter((m) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+      if (newMatches.length > 0) map.set(i, newMatches);
+    });
+    return map;
+  }, [filteredLogs]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -33,10 +59,6 @@ export function LogViewer({ services, runs }: LogViewerProps) {
       setShowHistorical(true);
     } catch {}
   };
-
-  const filteredLogs = search
-    ? logs.filter(l => l.text.toLowerCase().includes(search.toLowerCase()))
-    : logs;
 
   const serviceNameMap = new Map(services.map(s => [s.id, s.name]));
 
@@ -91,9 +113,21 @@ export function LogViewer({ services, runs }: LogViewerProps) {
               {filteredLogs.length === 0 ? (
                 <p className="text-muted-foreground">No log output yet. Start a service to see logs.</p>
               ) : (
-                filteredLogs.map((entry, i) => (
-                  <LogLine key={i} entry={entry} serviceName={serviceNameMap.get(entry.serviceId)} />
-                ))
+                filteredLogs.map((entry, i) => {
+                  const newMatches = diagnosticMap.get(i);
+                  return (
+                    <div key={i}>
+                      <LogLine entry={entry} serviceName={serviceNameMap.get(entry.serviceId)} />
+                      {projectId && newMatches?.map((pattern) => (
+                        <ErrorDiagnostic
+                          key={pattern.id}
+                          pattern={pattern}
+                          projectId={projectId}
+                        />
+                      ))}
+                    </div>
+                  );
+                })
               )}
             </div>
 
