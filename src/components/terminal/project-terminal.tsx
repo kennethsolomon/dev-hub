@@ -185,12 +185,6 @@ function BouncingDots() {
           }}
         />
       ))}
-      <style>{`
-        @keyframes terminal-bounce {
-          0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
-          30% { opacity: 1; transform: translateY(-4px); }
-        }
-      `}</style>
     </span>
   );
 }

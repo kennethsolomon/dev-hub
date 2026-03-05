@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { execSync } from 'child_process';
 import fs from 'fs';
+import { requireAuth } from '@/lib/auth/session';
+import { execAsync } from '@/lib/os/exec';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireAuth())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { id } = await params;
   const body = await req.json();
   const command = body.command?.trim();
@@ -21,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   try {
-    const output = execSync(`/bin/zsh -lc ${shellEscape(command)}`, {
+    const output = await execAsync(`/bin/zsh -lc ${shellEscape(command)}`, {
       cwd: project.path,
       timeout: 60000,
       encoding: 'utf-8',

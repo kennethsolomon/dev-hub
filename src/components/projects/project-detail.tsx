@@ -65,10 +65,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const [stoppingAll, setStoppingAll] = useState(false);
   const [addingService, setAddingService] = useState(false);
 
+  const hasRunningServices = data?.runs?.some((r: any) => r.status === 'running') ?? false;
   useEffect(() => {
+    if (!hasRunningServices) return;
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [hasRunningServices]);
 
   if (loading) return (
     <div className="p-6 space-y-6 animate-fade-up">

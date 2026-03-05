@@ -54,7 +54,7 @@ export function ErrorDiagnostic({ pattern, projectId, onFixApplied }: ErrorDiagn
           <Button
             size="sm"
             variant="outline"
-            className="shrink-0 border-[var(--color-citrine)]/40 text-[var(--color-citrine)] hover:bg-[var(--color-citrine)]/10 text-xs"
+            className="shrink-0 border-[var(--color-primary)]/40 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 text-xs"
             disabled={fixing}
             onClick={handleFix}
           >
@@ -66,7 +66,7 @@ export function ErrorDiagnostic({ pattern, projectId, onFixApplied }: ErrorDiagn
       <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
         {pattern.steps.map((step, i) => (
           <li key={i} className="leading-relaxed">
-            <span dangerouslySetInnerHTML={{ __html: formatStep(step) }} />
+            <StepText text={step} />
           </li>
         ))}
       </ol>
@@ -80,9 +80,19 @@ export function ErrorDiagnostic({ pattern, projectId, onFixApplied }: ErrorDiagn
   );
 }
 
-function formatStep(step: string): string {
-  return step.replace(
-    /`([^`]+)`/g,
-    '<code class="rounded bg-muted px-1 py-0.5 font-mono text-foreground/80">$1</code>'
+function StepText({ text }: { text: string }) {
+  const parts = text.split(/(`[^`]+`)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.startsWith('`') && part.endsWith('`') ? (
+          <code key={i} className="rounded bg-muted px-1 py-0.5 font-mono text-foreground/80">
+            {part.slice(1, -1)}
+          </code>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
   );
 }

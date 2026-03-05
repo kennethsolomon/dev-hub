@@ -22,8 +22,25 @@ export function LogViewer({ services, runs, projectId }: LogViewerProps) {
   const [showHistorical, setShowHistorical] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Track which diagnostic patterns have been shown (deduplicate)
-  const seenDiagnostics = useMemo(() => new Set<string>(), []);
+  const filteredLogs = search
+    ? logs.filter(l => l.text.toLowerCase().includes(search.toLowerCase()))
+    : logs;
+
+  // Compute which log indices should show diagnostics (first occurrence only)
+  const diagnosticMap = useMemo(() => {
+    const seen = new Set<string>();
+    const map = new Map<number, import('@/lib/diagnostics/patterns').ErrorPattern[]>();
+    filteredLogs.forEach((entry, i) => {
+      const matches = matchErrorPatterns(entry.text);
+      const newMatches = matches.filter((m) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+      if (newMatches.length > 0) map.set(i, newMatches);
+    });
+    return map;
+  }, [filteredLogs]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -39,10 +56,6 @@ export function LogViewer({ services, runs, projectId }: LogViewerProps) {
       setShowHistorical(true);
     } catch {}
   };
-
-  const filteredLogs = search
-    ? logs.filter(l => l.text.toLowerCase().includes(search.toLowerCase()))
-    : logs;
 
   const serviceNameMap = new Map(services.map(s => [s.id, s.name]));
 
@@ -98,17 +111,11 @@ export function LogViewer({ services, runs, projectId }: LogViewerProps) {
                 <p className="text-muted-foreground">No log output yet. Start a service to see logs.</p>
               ) : (
                 filteredLogs.map((entry, i) => {
-                  const matches = matchErrorPatterns(entry.text);
-                  const newMatches = matches.filter((m) => {
-                    if (seenDiagnostics.has(m.id)) return false;
-                    seenDiagnostics.add(m.id);
-                    return true;
-                  });
-
+                  const newMatches = diagnosticMap.get(i);
                   return (
                     <div key={i}>
                       <LogLine entry={entry} serviceName={serviceNameMap.get(entry.serviceId)} />
-                      {projectId && newMatches.map((pattern) => (
+                      {projectId && newMatches?.map((pattern) => (
                         <ErrorDiagnostic
                           key={pattern.id}
                           pattern={pattern}

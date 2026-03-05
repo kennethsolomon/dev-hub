@@ -28,10 +28,10 @@ import { getToolchainDetector } from '../../toolchain/detector';
 
 function mockDb(project: any, services: any[] = [], envDefs: any[] = []) {
   vi.mocked(getDb).mockReturnValue({
-    prepare: vi.fn((sql: string) => {
-      if (sql.includes('FROM projects')) return { get: () => project };
-      if (sql.includes('FROM services')) return { all: () => services };
-      if (sql.includes('FROM env_definitions')) return { all: () => envDefs };
+    prepare: vi.fn((sql: string): { get: () => any; all: () => any[] } => {
+      if (sql.includes('FROM projects')) return { get: () => project, all: () => [project].filter(Boolean) };
+      if (sql.includes('FROM services')) return { get: () => services[0] ?? null, all: () => services };
+      if (sql.includes('FROM env_definitions')) return { get: () => envDefs[0] ?? null, all: () => envDefs };
       return { get: () => null, all: () => [] };
     }),
   } as any);
