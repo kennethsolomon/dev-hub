@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApi, apiPost, apiPut, apiDelete } from '@/lib/hooks/use-api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ import { EnvPanel } from '@/components/projects/env-panel';
 import { ArrowLeft, ExternalLink, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { ProjectTerminal, TerminalEntry } from '@/components/terminal/project-terminal';
-import { useLogStream, LogEntry } from '@/lib/hooks/use-log-stream';
+import { useLogStream } from '@/lib/hooks/use-log-stream';
 
 interface ProjectData {
   project: {
@@ -411,7 +411,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           </TabsContent>
 
           <TabsContent value="terminal" className="mt-6">
-            <ProjectTerminal projectId={projectId} projectPath={project.path} entries={terminalEntries} setEntries={setTerminalEntries} running={terminalRunning} runningCommand={terminalRunningCommand} onRunCommand={runTerminalCommand} />
+            <ProjectTerminal projectPath={project.path} entries={terminalEntries} setEntries={setTerminalEntries} running={terminalRunning} runningCommand={terminalRunningCommand} onRunCommand={runTerminalCommand} />
           </TabsContent>
         </Tabs>
       </div>

@@ -156,6 +156,7 @@ export function LogViewer({ services, runs, projectId, logs: allLogs, connected,
                         setClearingAll(true);
                         try {
                           const res = await fetch(`/api/projects/${projectId}/logs`, { method: 'DELETE' });
+                          if (!res.ok) throw new Error();
                           const data = await res.json();
                           toast.success(`Deleted ${data.deleted} log${data.deleted !== 1 ? 's' : ''}`);
                           onRunsChanged();
@@ -187,7 +188,8 @@ export function LogViewer({ services, runs, projectId, logs: allLogs, connected,
                         onClick={async () => {
                           setDeletingRunId(run.id);
                           try {
-                            await fetch(`/api/logs/${run.id}`, { method: 'DELETE' });
+                            const res = await fetch(`/api/logs/${run.id}`, { method: 'DELETE' });
+                            if (!res.ok) throw new Error();
                             toast.success('Log deleted');
                             onRunsChanged();
                           } catch { toast.error('Failed to delete log'); }

@@ -9,7 +9,6 @@ export interface TerminalEntry {
 }
 
 interface ProjectTerminalProps {
-  projectId: string;
   projectPath: string;
   entries: TerminalEntry[];
   setEntries: React.Dispatch<React.SetStateAction<TerminalEntry[]>>;
@@ -18,7 +17,7 @@ interface ProjectTerminalProps {
   onRunCommand: (command: string) => void;
 }
 
-export function ProjectTerminal({ projectId, projectPath, entries, setEntries, running, runningCommand, onRunCommand }: ProjectTerminalProps) {
+export function ProjectTerminal({ projectPath, entries, setEntries, running, runningCommand, onRunCommand }: ProjectTerminalProps) {
   const [input, setInput] = useState('');
   const [elapsed, setElapsed] = useState(0);
   const [historyIndex, setHistoryIndex] = useState(-1);
