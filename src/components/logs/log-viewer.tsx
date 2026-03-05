@@ -56,6 +56,14 @@ export function LogViewer({ services, runs, projectId, logs: allLogs, connected,
     return map;
   }, [filteredLogs]);
 
+  // Refresh relative timestamps every 60s
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (runs.length === 0) return;
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, [runs.length]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
