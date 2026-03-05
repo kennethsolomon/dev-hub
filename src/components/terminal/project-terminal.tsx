@@ -27,7 +27,7 @@ export function ProjectTerminal({ projectId, projectPath }: ProjectTerminalProps
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [entries, elapsed]);
+  }, [entries]);
 
   // Elapsed time counter
   useEffect(() => {

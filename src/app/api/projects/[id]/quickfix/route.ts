@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     case 'install-deps': {
       try {
         const cmd = project.type === 'laravel' ? 'composer install' : 'npm install';
-        await execAsync(cmd, { cwd: project.path, timeout: 120000, encoding: 'utf-8' });
+        await execAsync(`/bin/zsh -lc '${cmd}'`, { cwd: project.path, timeout: 120000, encoding: 'utf-8' });
         return NextResponse.json({ ok: true, message: 'Dependencies installed' });
       } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     case 'rebuild-native-modules': {
       try {
-        await execAsync('npm rebuild', { cwd: project.path, timeout: 120000, encoding: 'utf-8' });
+        await execAsync("/bin/zsh -lc 'npm rebuild'", { cwd: project.path, timeout: 120000, encoding: 'utf-8' });
         return NextResponse.json({ ok: true, message: 'Native modules rebuilt successfully. Restart the service.' });
       } catch (err: any) {
         return NextResponse.json({ error: `npm rebuild failed: ${err.message}` }, { status: 500 });
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
           fs.rmSync(nodeModules, { recursive: true, force: true });
         }
-        await execAsync('npm install', { cwd: project.path, timeout: 300000, encoding: 'utf-8' });
+        await execAsync("/bin/zsh -lc 'npm install'", { cwd: project.path, timeout: 300000, encoding: 'utf-8' });
         return NextResponse.json({ ok: true, message: 'node_modules reinstalled successfully. Restart the service.' });
       } catch (err: any) {
         return NextResponse.json({ error: `Reinstall failed: ${err.message}` }, { status: 500 });

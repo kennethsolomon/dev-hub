@@ -4,6 +4,7 @@ import fs from 'fs';
 import { requireAuth } from '@/lib/auth/session';
 import { execAsync } from '@/lib/os/exec';
 
+// NOTE: This endpoint executes arbitrary commands — intended for localhost-only use.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAuth())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

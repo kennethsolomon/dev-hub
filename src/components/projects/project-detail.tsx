@@ -80,7 +80,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         <div className="h-4 w-96 rounded bg-muted animate-pulse" />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[...Array(4)].map((_, i) => (
+        {Array.from({ length: 4 }, (_, i) => (
           <div key={i} className="rounded-xl bg-card border border-border p-4 space-y-2">
             <div className="h-6 w-16 rounded bg-muted animate-pulse" />
             <div className="h-3 w-12 rounded bg-muted animate-pulse" />
@@ -89,7 +89,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       </div>
       <div className="h-10 w-full rounded bg-muted animate-pulse" />
       <div className="space-y-3">
-        {[...Array(2)].map((_, i) => (
+        {Array.from({ length: 2 }, (_, i) => (
           <div key={i} className="h-16 rounded-xl bg-card border border-border animate-pulse" />
         ))}
       </div>
