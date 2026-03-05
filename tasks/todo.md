@@ -1,111 +1,57 @@
-# TODO — 2026-03-05 — UI Redesign: Carbon & Citrine
+# TODO — 2026-03-05 — Project Detail Page Redesign
 
 ## Goal
-Redesign the DevHub UI with the "Carbon & Citrine" theme: deep carbon blacks (#08080A), electric chartreuse accent (#D4FF00), Bricolage Grotesque + DM Sans typography, subtle animations, and improved layouts across all pages.
+Redesign `/projects/[id]` from a flat, utilitarian layout into a data-rich operations HUD with a compact hero header, inline quick stats, enriched tabs, and polished sub-panels.
 
 ## Plan
 
-### Phase 1: Foundation (Theme + Fonts + CSS)
-- [x] Update `src/app/layout.tsx` — replace Geist/Geist_Mono with Bricolage_Grotesque, DM_Sans, JetBrains_Mono from next/font/google
-- [x] Update `src/app/globals.css` — replace all CSS variable values with Carbon & Citrine palette (both `:root` light and `.dark` dark modes)
-- [x] Add `--font-display` CSS variable mapping in `@theme inline` block for Bricolage Grotesque
-- [x] Add custom CSS keyframes: `fade-up` (page load stagger), `pulse-ring` (running status dot), and utility classes `.font-display`, `.animate-fade-up`, `.animate-pulse-ring`
-- [x] Add subtle noise texture background via CSS pseudo-element on body (2% opacity SVG data URI)
+### Phase 1: Hero Header + Quick Stats
+- [x] Add quick stats row below project name: Status (dot + text), Services (running/total + mini progress bar), Port (cyan mono, clickable), Uptime (live-ticking relative time)
+- [x] Move status dot to left of project name (large, pulsing when running)
+- [x] Badges row: colored type badge (matching dashboard `typeBadgeColor`), mono slug badge, URL with ExternalLink icon
+- [x] Extract tab trigger className into a shared `const` to reduce repetition
 
-### Phase 2: Layout Shell + Sidebar
-- [x] Update `src/components/layout/sidebar-nav.tsx` — new sidebar design
-- [x] Update `src/components/layout/app-shell.tsx` — adjust width, remove backdrop-blur on sidebar, keep mobile sheet
+### Phase 2: Loading + Error States
+- [x] Replace "Loading..." text with skeleton shimmer (3 blocks: header, stats, tab placeholder) using `animate-pulse` divs
+- [x] Improve "Not Found" error state: citrine diamond icon, rounded-xl border card wrapper
 
-### Phase 3: Dashboard Page
-- [x] Update `src/components/dashboard/dashboard.tsx`:
-  - Add quick stats row (4 compact stat cards: Projects, Running, Ports, Updates)
-  - Page title in `font-display` (Bricolage Grotesque)
-  - Project cards: citrine glow border on hover, translateY(-1px) lift
-  - Running status: pulsing green dot (pulse-ring animation)
-  - Staggered fade-up animation on cards (CSS animation-delay via nth-child or inline style)
-  - Improved card layout: project name + status dot, type badge, port in mono, action buttons
+### Phase 3: Services Tab Polish
+- [x] Add `animate-fade-up` stagger to service cards (40ms increments)
+- [x] Add citrine left border to running service cards in `service-card.tsx` (`border-l-[3px] border-l-primary bg-primary/[0.02]`)
+- [x] Replace empty services text with dashed border empty state card (diamond icon + "Add Service" button)
 
-### Phase 4: Project Detail Page
-- [x] Update `src/components/projects/project-detail.tsx`:
-  - Back link (ghost button with arrow) at top
-  - Page title in `font-display`
-  - Tab bar: underline style (2px citrine bottom border for active, no background tabs)
-  - Service cards: horizontal row layout (name, port mono, command mono muted, uptime, action)
-  - Metadata row with badges and mono font for paths
+### Phase 4: Config Tab Refresh
+- [x] Remove Card/CardHeader/CardContent wrapper from ConfigPanel, use bare panel style (rounded-xl border bg-card + header bar) matching preflight/env panels
+- [x] Add live URL preview below slug field (`{slug}.localhost`)
+- [x] Add Danger Zone section: red top border, "Delete Project" button with confirm dialog
 
-### Phase 5: Stacks Page
-- [x] Read and update `src/app/stacks/page.tsx` (and any stacks component)
-  - Section title in `font-display`
-  - Stack cards: running status dots per project, citrine left border when all running
-  - Empty state: dashed border card with CTA
-  - Delete action appears on hover (top-right, destructive ghost)
+### Phase 5: Tab Badge Counts
+- [x] Services tab: show count `Services (N)`
+- [x] Logs tab: show tiny green dot before "Logs" when connected (uses `anyRunning` as proxy for connection)
 
-### Phase 6: Updates Page
-- [x] Read and update `src/app/updates/page.tsx` (and any updates component)
-  - Section title in `font-display`
-  - Left project list: active item gets citrine left bar (same pattern as nav)
-  - Badge count: citrine if >0, muted if 0
-  - Package table: mono font for versions, amber badges for MAJOR
-  - Upgrade notes section with checkbox list
-
-### Phase 7: Settings Page
-- [x] Read and update `src/app/settings/page.tsx`
-  - Section titles in `font-display`
-  - Stacked card sections with max-width 720px centered
-  - Subtle top border accent: 1px gradient from citrine to transparent, 40% width, centered
-  - Toggle alignment: label left, switch right (same line)
-  - Input fields: darker inset bg, citrine focus ring
-  - Workspace paths as mono inline pills
-
-### Phase 8: Supporting Components
-- [x] Update `src/components/services/service-card.tsx` — horizontal row style, mono font for ports/commands, status dot with pulse animation
-- [x] Update `src/components/logs/log-viewer.tsx` — dark inset bg (#08080A) for terminal feel, mono font, service filter pills
-- [x] Update `src/components/projects/preflight-panel.tsx` — consistent with new theme
-- [x] Update `src/components/projects/env-panel.tsx` — consistent with new theme
-
-### Phase 9: Verify & Polish
+### Phase 6: Verification
 - [x] Run `npx tsc --noEmit` — no type errors
 - [x] Run `npm run build` — builds successfully
-- [x] Run `npm test` — all tests pass
-- [ ] Visual review: check all 5 pages (dashboard, project detail, stacks, updates, settings) in dark mode
-- [ ] Visual review: check light mode still works
-- [ ] Check mobile responsive layout still works
+- [x] Run `npm test` — all existing tests pass
 
 ## Verification
 - `npx tsc --noEmit` -> no type errors
 - `npm run build` -> builds successfully
 - `npm test` -> all existing tests pass
-- Manual: visit each page and confirm Carbon & Citrine theme is applied
-- Manual: dark mode is default, light mode alternative works
-- Manual: sidebar navigation works, active states correct
-- Manual: cards have hover effects (citrine glow, lift)
-- Manual: running status dots pulse
-- Manual: staggered fade-up on page load
-- Manual: mobile responsive works (sidebar drawer)
 
 ## Acceptance Criteria
-- [ ] All 5 pages use the Carbon & Citrine color palette
-- [ ] Bricolage Grotesque used for page/section headings, DM Sans for body, JetBrains Mono for code
-- [ ] Cards have citrine glow hover effect
-- [ ] Running services show pulsing green dot
-- [ ] Page content has staggered fade-up entrance animation
-- [ ] Sidebar uses new citrine accent styling
-- [ ] Quick stats row on dashboard
-- [ ] No regressions: all tests pass, build succeeds, typescript clean
-- [ ] Dark mode default, light mode alternative functional
-- [ ] Mobile responsive layout intact
+- [x] Hero header shows large status dot, project name, path, quick stats row, and badges
+- [x] Quick stats include live-ticking uptime counter
+- [x] Loading state shows skeleton shimmer instead of plain text
+- [x] Error state has citrine diamond icon and card wrapper
+- [x] Running service cards have citrine left border glow
+- [x] Services have staggered fade-up animation
+- [x] Config panel uses bare panel style (no Card wrapper), has slug URL preview and Danger Zone
+- [x] Tab bar has service count and logs connection indicator
+- [x] No type errors, build succeeds, all tests pass
 
 ## Risks / Unknowns
-- Bricolage Grotesque / DM Sans / JetBrains Mono may not be available via next/font/google — verify at implementation time, have fallbacks ready
-- shadcn/ui components use CSS variables — our overrides should cascade correctly, but tab/dialog components may need class adjustments
-- Noise texture SVG data URI size — keep minimal (<500 bytes)
-- Light mode palette needs testing — citrine (#D4FF00) won't have enough contrast on white, so we use darker citrine (#4A7A00) for light mode
-
-## Design Reference
-See `/frontend-design` output from this session for full design spec including:
-- Complete color palette with hex values
-- Typography scale
-- ASCII mockups for all pages
-- Component notes (card, button, badge, input, tab variants)
-- Animation specifications
-- Implementation notes
+- Frontend-only changes — no backend modifications needed
+- Files to modify: `project-detail.tsx` (main), `service-card.tsx` (running border)
+- Uptime counter uses `useEffect` interval — clean up on unmount
+- Logs tab connection indicator requires accessing `connected` state from LogViewer (may need to lift state or use a simpler approach like checking `status?.running`)
