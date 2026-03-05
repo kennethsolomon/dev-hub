@@ -35,6 +35,10 @@ export function Dashboard() {
   const runningServiceIds = new Set(status?.running?.map(r => r.serviceId) || []);
   const routeMap = new Map(status?.routes?.map(r => [r.slug, r]) || []);
 
+  const runningCount = status?.running?.length || 0;
+  const projectCount = projects?.length || 0;
+  const portsInUse = new Set(status?.running?.map(r => r.assignedPort).filter(Boolean)).size;
+
   const handleAdd = async () => {
     try {
       await apiPost('/api/projects', { action: 'import', path: addPath });
@@ -56,7 +60,6 @@ export function Dashboard() {
         }
       }
       await refetchStatus();
-      // Use the actual assigned port for the URL (always works)
       const primaryPort = results.find((r: any) => r.assignedPort)?.assignedPort;
       if (primaryPort) {
         const url = `http://localhost:${primaryPort}`;
@@ -109,11 +112,12 @@ export function Dashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between animate-fade-up">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+          <h2 className="text-[28px] font-bold tracking-tight font-display">Dashboard</h2>
           <p className="text-muted-foreground text-sm">
-            {projects?.length || 0} projects &middot; {status?.running?.length || 0} services running
+            {projectCount} project{projectCount !== 1 ? 's' : ''} &middot; {runningCount} service{runningCount !== 1 ? 's' : ''} running
           </p>
         </div>
         <div className="flex gap-2">
@@ -146,21 +150,46 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-up" style={{ animationDelay: '50ms' }}>
+        <div className="rounded-xl bg-muted/50 p-4">
+          <p className="text-2xl font-bold font-display">{projectCount}</p>
+          <p className="text-xs text-muted-foreground mt-1">Projects</p>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-4">
+          <p className="text-2xl font-bold font-display text-green-400">{runningCount}</p>
+          <p className="text-xs text-muted-foreground mt-1">Running</p>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-4">
+          <p className="text-2xl font-bold font-display">{portsInUse}</p>
+          <p className="text-xs text-muted-foreground mt-1">Ports</p>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-4">
+          <p className="text-2xl font-bold font-display">&mdash;</p>
+          <p className="text-xs text-muted-foreground mt-1">Updates</p>
+        </div>
+      </div>
+
       {/* Portless mode banner */}
       <PortlessBanner />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {projects?.map(project => {
+      {/* Project Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {projects?.map((project, i) => {
           const isRunning = getProjectStatus(project);
           const route = routeMap.get(project.slug);
 
           return (
-            <Card key={project.id} className="relative group">
+            <Card
+              key={project.id}
+              className="relative group transition-all duration-150 hover:border-primary/15 hover:-translate-y-px animate-fade-up"
+              style={{ animationDelay: `${100 + i * 50}ms` }}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base">
-                      <Link href={`/projects/${project.id}`} className="hover:underline">
+                  <div className="space-y-1 min-w-0">
+                    <CardTitle className="text-[15px] font-semibold">
+                      <Link href={`/projects/${project.id}`} className="hover:text-primary transition-colors">
                         {project.name}
                       </Link>
                     </CardTitle>
@@ -172,7 +201,7 @@ export function Dashboard() {
                     <Badge variant="outline" className={typeBadgeColor(project.type)}>
                       {project.type}
                     </Badge>
-                    <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${isRunning ? 'bg-green-500 animate-pulse-ring' : 'bg-zinc-600'}`} />
                   </div>
                 </div>
               </CardHeader>
@@ -188,8 +217,8 @@ export function Dashboard() {
                   {isRunning && route?.port ? (
                     <>
                       <span>&middot;</span>
-                      <a href={`http://localhost:${route.port}`} target="_blank" rel="noopener" className="text-primary hover:underline truncate">
-                        http://localhost:{route.port}
+                      <a href={`http://localhost:${route.port}`} target="_blank" rel="noopener" className="text-primary hover:underline truncate font-mono">
+                        localhost:{route.port}
                       </a>
                     </>
                   ) : null}
@@ -211,7 +240,7 @@ export function Dashboard() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="ml-auto text-muted-foreground opacity-0 group-hover:opacity-100"
+                    className="ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => handleDelete(project.id)}
                   >
                     Remove
@@ -223,7 +252,7 @@ export function Dashboard() {
         })}
 
         {projects?.length === 0 && (
-          <div className="col-span-full text-center py-12">
+          <div className="col-span-full text-center py-16 animate-fade-up">
             <p className="text-muted-foreground mb-4">No projects yet. Add one or configure workspace roots in Settings.</p>
             <Button variant="outline" onClick={() => setAddOpen(true)}>Add Your First Project</Button>
           </div>
@@ -246,7 +275,7 @@ function PortlessBanner() {
     <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4 text-sm">
       <p className="font-medium text-yellow-400">Subdomain URLs include a port number</p>
       <p className="text-muted-foreground mt-1">
-        To get clean URLs like <code className="text-xs">http://myapp.localhost</code>, enable Portless Mode in Settings.
+        To get clean URLs like <code className="text-xs font-mono">http://myapp.localhost</code>, enable Portless Mode in Settings.
         This requires a one-time setup with Caddy.
       </p>
     </div>

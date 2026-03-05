@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useApi, apiPut } from '@/lib/hooks/use-api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -91,65 +90,66 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
   const files = data?.files || [];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base">Environment Variables</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              {files.length > 0
-                ? `Source: ${files.join(', ')}`
-                : `No .env files found in ${projectPath}`}
-              {variables.filter(v => v.override !== null).length > 0 && (
-                <> &middot; {variables.filter(v => v.override !== null).length} override{variables.filter(v => v.override !== null).length !== 1 ? 's' : ''} active</>
-              )}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>
-            <Dialog open={addOpen} onOpenChange={setAddOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">Add Override</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Environment Override</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Key</label>
-                    <Input
-                      value={newKey}
-                      onChange={e => setNewKey(e.target.value)}
-                      placeholder="e.g. WEBHOOK_PORT"
-                      className="font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Value</label>
-                    <Input
-                      value={newValue}
-                      onChange={e => setNewValue(e.target.value)}
-                      placeholder="e.g. 9000"
-                      className="font-mono"
-                    />
-                  </div>
-                  <Button onClick={handleAdd} disabled={!newKey.trim()}>Add Override</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div>
+          <span className="text-[15px] font-semibold">Environment Variables</span>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {files.length > 0
+              ? `Source: ${files.join(', ')}`
+              : `No .env files found in ${projectPath}`}
+            {variables.filter(v => v.override !== null).length > 0 && (
+              <> &middot; {variables.filter(v => v.override !== null).length} override{variables.filter(v => v.override !== null).length !== 1 ? 's' : ''} active</>
+            )}
+          </p>
         </div>
-      </CardHeader>
-      <CardContent>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => refetch()}>Refresh</Button>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="h-7 text-xs">Add Override</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Environment Override</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Key</label>
+                  <Input
+                    value={newKey}
+                    onChange={e => setNewKey(e.target.value)}
+                    placeholder="e.g. WEBHOOK_PORT"
+                    className="font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Value</label>
+                  <Input
+                    value={newValue}
+                    onChange={e => setNewValue(e.target.value)}
+                    placeholder="e.g. 9000"
+                    className="font-mono"
+                  />
+                </div>
+                <Button onClick={handleAdd} disabled={!newKey.trim()}>Add Override</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
         {variables.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             No environment variables found. Add an override or create a .env file in your project.
           </p>
         ) : (
-          <div className="space-y-1">
-            {/* Header */}
-            <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+          <div className="space-y-0">
+            {/* Header row */}
+            <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border">
               <span>Key</span>
               <span>.env Value</span>
               <span>Override</span>
@@ -175,8 +175,8 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -206,21 +206,21 @@ function EnvRow({
   maskValue: (val: string) => string;
 }) {
   const displayValue = (val: string | null) => {
-    if (val === null) return <span className="text-muted-foreground/50">—</span>;
+    if (val === null) return <span className="text-muted-foreground/50">&mdash;</span>;
     if (v.isSecret && !isRevealed) return <span className="text-muted-foreground">{maskValue(val)}</span>;
     return <span className="font-mono text-xs break-all">{val}</span>;
   };
 
   const portDot = () => {
     if (!v.isPort) return null;
-    const color = v.portStatus === 'free' ? 'bg-green-500' : v.portStatus === 'in-use' ? 'bg-red-500' : 'bg-muted-foreground/30';
+    const color = v.portStatus === 'free' ? 'bg-green-500' : v.portStatus === 'in-use' ? 'bg-red-500' : 'bg-zinc-600';
     const label = v.portStatus === 'free' ? 'Port free' : v.portStatus === 'in-use' ? 'Port in use' : 'Unknown';
     return <div className={`w-2 h-2 rounded-full ${color} shrink-0`} title={label} />;
   };
 
   if (isEditing) {
     return (
-      <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center bg-muted/30 rounded">
+      <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center bg-muted/30 rounded-lg">
         <div className="flex items-center gap-2">
           {portDot()}
           <span className="font-mono text-xs font-medium">{v.key}</span>
@@ -245,7 +245,7 @@ function EnvRow({
   }
 
   return (
-    <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center hover:bg-muted/20 rounded group">
+    <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center hover:bg-muted/20 rounded-lg group">
       <div className="flex items-center gap-2">
         {portDot()}
         <span className="font-mono text-xs font-medium">{v.key}</span>
@@ -259,13 +259,11 @@ function EnvRow({
       <div>{displayValue(v.fileValue)}</div>
       <div className="flex items-center gap-1">
         {v.override !== null ? (
-          <>
-            <Badge variant="secondary" className="font-mono text-xs px-1.5 py-0">
-              {v.isSecret && !isRevealed ? maskValue(v.override) : v.override}
-            </Badge>
-          </>
+          <Badge variant="secondary" className="font-mono text-xs px-1.5 py-0">
+            {v.isSecret && !isRevealed ? maskValue(v.override) : v.override}
+          </Badge>
         ) : (
-          <span className="text-muted-foreground/50 text-xs">—</span>
+          <span className="text-muted-foreground/50 text-xs">&mdash;</span>
         )}
       </div>
       <div className="flex gap-1 w-[140px] opacity-0 group-hover:opacity-100 transition-opacity">

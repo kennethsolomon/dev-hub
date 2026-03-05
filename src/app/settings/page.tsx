@@ -91,7 +91,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (!settings) return <AppShell><div className="p-6">Loading...</div></AppShell>;
+  if (!settings) return <AppShell><div className="p-6 text-muted-foreground">Loading...</div></AppShell>;
 
   const subdomainRouting = settings.subdomain_routing === 'true';
   const portlessMode = settings.portless_mode === 'true';
@@ -99,23 +99,25 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="p-6 space-y-6 max-w-3xl">
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+      <div className="p-6 space-y-6 max-w-[720px]">
+        <div className="animate-fade-up">
+          <h2 className="text-[28px] font-bold tracking-tight font-display">Settings</h2>
+          <p className="text-muted-foreground text-sm">Configure your development environment</p>
+        </div>
 
         {/* Workspace Roots */}
-        <Card>
+        <Card className="relative overflow-hidden animate-fade-up" style={{ animationDelay: '50ms' }}>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[40%] h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           <CardHeader>
-            <CardTitle className="text-base">Workspace Roots</CardTitle>
+            <CardTitle className="text-[15px] font-semibold font-display">Workspace Roots</CardTitle>
+            <p className="text-xs text-muted-foreground">Directories to scan for discoverable projects</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Directories to scan for discoverable projects.
-            </p>
             <div className="space-y-2">
               {workspaceRoots.map(root => (
-                <div key={root} className="flex items-center justify-between px-3 py-2 rounded bg-muted/50">
+                <div key={root} className="flex items-center justify-between px-3 py-2 rounded-lg bg-background border border-border">
                   <span className="text-sm font-mono">{root}</span>
-                  <Button size="sm" variant="ghost" onClick={() => removeRoot(root)}>Remove</Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={() => removeRoot(root)}>Remove</Button>
                 </div>
               ))}
             </div>
@@ -124,29 +126,28 @@ export default function SettingsPage() {
                 value={newRoot}
                 onChange={e => setNewRoot(e.target.value)}
                 placeholder="/Users/you/projects"
+                className="font-mono"
               />
               <Button onClick={addRoot} disabled={!newRoot}>Add</Button>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={scanAll} disabled={scanning}>
-                {scanning ? 'Scanning...' : 'Scan for Projects'}
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={scanAll} disabled={scanning}>
+              {scanning ? 'Scanning...' : 'Scan for Projects'}
+            </Button>
 
             {discoveredProjects.length > 0 && (
               <div className="space-y-2 mt-4">
-                <h4 className="text-sm font-medium">Discovered Projects</h4>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Discovered Projects</h4>
                 {discoveredProjects.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-2 rounded bg-muted/50">
-                    <div>
+                  <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-background border border-border">
+                    <div className="flex items-center gap-2">
                       <span className="text-sm">{p.name}</span>
-                      <Badge variant="outline" className="ml-2 text-xs">{p.type}</Badge>
-                      <span className="text-xs text-muted-foreground ml-2">{p.path}</span>
+                      <Badge variant="outline" className="text-xs">{p.type}</Badge>
+                      <span className="text-xs text-muted-foreground font-mono">{p.path}</span>
                     </div>
                     {p.alreadyImported ? (
                       <Badge variant="secondary" className="text-xs">Imported</Badge>
                     ) : (
-                      <Button size="sm" variant="outline" onClick={() => importProject(p.path)}>Import</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => importProject(p.path)}>Import</Button>
                     )}
                   </div>
                 ))}
@@ -156,14 +157,16 @@ export default function SettingsPage() {
         </Card>
 
         {/* Routing */}
-        <Card>
+        <Card className="relative overflow-hidden animate-fade-up" style={{ animationDelay: '100ms' }}>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[40%] h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           <CardHeader>
-            <CardTitle className="text-base">Subdomain Routing</CardTitle>
+            <CardTitle className="text-[15px] font-semibold font-display">Subdomain Routing</CardTitle>
+            <p className="text-xs text-muted-foreground">Route *.localhost to project services</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label>Enable Subdomain Routing</Label>
+                <Label className="text-sm">Enable Subdomain Routing</Label>
                 <p className="text-xs text-muted-foreground">Access projects via slug.{baseDomain}</p>
               </div>
               <Switch
@@ -176,9 +179,9 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between">
               <div>
-                <Label>Portless Mode</Label>
+                <Label className="text-sm">Portless Mode</Label>
                 <p className="text-xs text-muted-foreground">
-                  Remove port from URLs (requires Caddy + one-time sudo setup)
+                  Remove port from URLs (requires Caddy)
                 </p>
               </div>
               <Switch
@@ -188,13 +191,13 @@ export default function SettingsPage() {
             </div>
 
             {portlessMode && (
-              <div className="p-3 rounded bg-muted/50 text-sm space-y-2">
-                <p className="font-medium">Portless Mode Setup</p>
-                <p className="text-xs text-muted-foreground">
+              <div className="p-3 rounded-lg bg-background border border-border text-sm space-y-2">
+                <p className="font-medium text-xs">Portless Mode Setup</p>
+                <p className="text-xs text-muted-foreground font-mono leading-relaxed">
                   1. Install Caddy: <code>brew install caddy</code><br />
                   2. Generate Caddyfile: <code>curl http://localhost:{proxyPort}/api/proxy/caddyfile &gt; /tmp/devhub-Caddyfile</code><br />
                   3. Run: <code>sudo caddy run --config /tmp/devhub-Caddyfile</code><br />
-                  Or use the install script: <code>sudo ./scripts/install-portless.sh</code>
+                  Or use: <code>sudo ./scripts/install-portless.sh</code>
                 </p>
               </div>
             )}
@@ -202,32 +205,33 @@ export default function SettingsPage() {
             <Separator />
 
             <div className="space-y-2">
-              <Label>Base Domain</Label>
+              <Label className="text-sm">Base Domain</Label>
               <div className="flex gap-2">
-                <Input value={baseDomain} onChange={e => setBaseDomain(e.target.value)} />
+                <Input value={baseDomain} onChange={e => setBaseDomain(e.target.value)} className="font-mono" />
                 <Button onClick={() => saveSettings({ base_domain: baseDomain })}>Save</Button>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Proxy Port</Label>
+              <Label className="text-sm">Proxy Port</Label>
               <div className="flex gap-2">
-                <Input value={proxyPort} onChange={e => setProxyPort(e.target.value)} />
+                <Input value={proxyPort} onChange={e => setProxyPort(e.target.value)} className="font-mono" />
                 <Button onClick={() => saveSettings({ proxy_port: proxyPort })}>Save</Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Bind Mode / Security */}
-        <Card>
+        {/* Security */}
+        <Card className="relative overflow-hidden animate-fade-up" style={{ animationDelay: '150ms' }}>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[40%] h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           <CardHeader>
-            <CardTitle className="text-base">Security & Network</CardTitle>
+            <CardTitle className="text-[15px] font-semibold font-display">Security & Network</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label>LAN Mode (0.0.0.0)</Label>
+                <Label className="text-sm">LAN Mode (0.0.0.0)</Label>
                 <p className="text-xs text-muted-foreground">
                   Allow connections from other devices on your network
                 </p>
@@ -242,7 +246,7 @@ export default function SettingsPage() {
             </div>
 
             {bindMode === 'lan' && (
-              <div className="p-3 rounded bg-red-500/5 border border-red-500/20 text-sm text-red-400">
+              <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20 text-sm text-red-400">
                 LAN mode is active. DevHub is accessible from other devices on your network.
                 Passcode authentication is strongly recommended.
               </div>
@@ -251,7 +255,7 @@ export default function SettingsPage() {
             <Separator />
 
             <div>
-              <Label>Passcode Authentication</Label>
+              <Label className="text-sm">Passcode Authentication</Label>
               <p className="text-xs text-muted-foreground mb-2">
                 {authInfo?.hasPasscode ? 'Passcode is set. Auth is enabled.' : 'No passcode set yet.'}
               </p>
@@ -271,7 +275,7 @@ export default function SettingsPage() {
             {authInfo?.authEnabled && (
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Auth Enabled</Label>
+                  <Label className="text-sm">Auth Enabled</Label>
                   <p className="text-xs text-muted-foreground">Require passcode to access DevHub</p>
                 </div>
                 <Switch

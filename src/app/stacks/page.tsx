@@ -42,6 +42,7 @@ export default function StacksPage() {
 
   const stacks = stackData?.stacks || [];
   const items = stackData?.items || [];
+  const runningRoutes = new Set(status?.routes?.filter((r: any) => r.running).map((r: any) => r.slug) || []);
 
   const handleCreate = async () => {
     try {
@@ -93,12 +94,21 @@ export default function StacksPage() {
     );
   };
 
+  const typeBadgeColor = (type: string) => {
+    switch (type) {
+      case 'node': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'laravel': return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'expo': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
   return (
     <AppShell>
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between animate-fade-up">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Stacks</h2>
+            <h2 className="text-[28px] font-bold tracking-tight font-display">Stacks</h2>
             <p className="text-muted-foreground text-sm">Group projects for one-click start/stop</p>
           </div>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -137,31 +147,49 @@ export default function StacksPage() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {stacks.map(stack => {
-            const stackItems = items.filter(i => i.stack_id === stack.id);
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {stacks.map((stack, i) => {
+            const stackItems = items.filter(it => it.stack_id === stack.id);
+            const allRunning = stackItems.length > 0 && stackItems.every(it => runningRoutes.has(it.slug));
+
             return (
-              <Card key={stack.id}>
+              <Card
+                key={stack.id}
+                className="relative group transition-all duration-150 hover:border-primary/15 hover:-translate-y-px animate-fade-up"
+                style={{ animationDelay: `${100 + i * 50}ms` }}
+              >
+                {allRunning && (
+                  <div className="absolute left-0 top-4 bottom-4 w-[3px] bg-primary rounded-r-full" />
+                )}
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{stack.name}</CardTitle>
-                    <Badge variant="outline">{stackItems.length} projects</Badge>
+                    <CardTitle className="text-[15px] font-semibold">{stack.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{stackItems.length} project{stackItems.length !== 1 ? 's' : ''}</Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity h-7 px-2 hover:text-destructive"
+                        onClick={() => handleDeleteStack(stack.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {stackItems.map(item => (
                       <div key={item.project_id} className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">&middot;</span>
-                        {item.project_name}
-                        <Badge variant="outline" className="text-xs">{item.type}</Badge>
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${runningRoutes.has(item.slug) ? 'bg-green-500 animate-pulse-ring' : 'bg-zinc-600'}`} />
+                        <span>{item.project_name}</span>
+                        <Badge variant="outline" className={`text-xs ${typeBadgeColor(item.type)}`}>{item.type}</Badge>
                       </div>
                     ))}
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => handleStartStack(stack.id)}>Start All</Button>
                     <Button size="sm" variant="destructive" onClick={() => handleStopStack(stack.id)}>Stop All</Button>
-                    <Button size="sm" variant="ghost" className="ml-auto text-muted-foreground" onClick={() => handleDeleteStack(stack.id)}>Delete</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -169,9 +197,12 @@ export default function StacksPage() {
           })}
 
           {stacks.length === 0 && (
-            <p className="col-span-full text-center text-muted-foreground py-8">
-              No stacks yet. Create one to group related projects.
-            </p>
+            <div className="col-span-full animate-fade-up">
+              <div className="border border-dashed border-border rounded-xl p-8 text-center">
+                <p className="text-muted-foreground mb-4">No stacks yet. Create one to group related projects.</p>
+                <Button variant="outline" onClick={() => setCreateOpen(true)}>Create Stack</Button>
+              </div>
+            </div>
           )}
         </div>
       </div>

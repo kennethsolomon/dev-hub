@@ -2,7 +2,6 @@
 
 import { useApi } from '@/lib/hooks/use-api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface PreflightResult {
   check: string;
@@ -16,44 +15,41 @@ export function PreflightPanel({ projectId }: { projectId: string }) {
 
   const statusIcon = (s: string) => {
     switch (s) {
-      case 'pass': return <span className="text-green-400">PASS</span>;
-      case 'warn': return <span className="text-yellow-400">WARN</span>;
-      case 'fail': return <span className="text-red-400">FAIL</span>;
+      case 'pass': return <span className="text-green-400 font-mono text-xs font-medium">PASS</span>;
+      case 'warn': return <span className="text-amber-400 font-mono text-xs font-medium">WARN</span>;
+      case 'fail': return <span className="text-red-400 font-mono text-xs font-medium">FAIL</span>;
       default: return null;
     }
   };
 
   const handleQuickFix = async (action: string, args: any) => {
-    // Quick fix actions would be handled by a dedicated API
-    // For V1, show what would be done
     alert(`Quick fix: ${action}\nArgs: ${JSON.stringify(args)}`);
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Preflight Checks</CardTitle>
-          <Button size="sm" variant="outline" onClick={refetch} disabled={loading}>
-            {loading ? 'Checking...' : 'Re-check'}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-[15px] font-semibold">Preflight Checks</span>
+        <Button size="sm" variant="outline" onClick={refetch} disabled={loading}>
+          {loading ? 'Checking...' : 'Re-check'}
+        </Button>
+      </div>
+      <div className="p-4">
         {!checks ? (
           <p className="text-sm text-muted-foreground">Loading checks...</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-0">
             {checks.map((check, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+              <div key={i} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs w-10">{statusIcon(check.status)}</span>
+                  <span className="w-10">{statusIcon(check.status)}</span>
                   <span className="text-sm">{check.message}</span>
                 </div>
                 {check.quickFix && (
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-7 text-xs"
                     onClick={() => handleQuickFix(check.quickFix!.action, check.quickFix!.args)}
                   >
                     {check.quickFix.label}
@@ -66,7 +62,7 @@ export function PreflightPanel({ projectId }: { projectId: string }) {
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

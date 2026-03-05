@@ -13,6 +13,8 @@ import { LogViewer } from '@/components/logs/log-viewer';
 import { PreflightPanel } from '@/components/projects/preflight-panel';
 import { ServiceCard } from '@/components/services/service-card';
 import { EnvPanel } from '@/components/projects/env-panel';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 interface ProjectData {
   project: {
@@ -37,13 +39,13 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const [addServiceOpen, setAddServiceOpen] = useState(false);
   const [newService, setNewService] = useState({ name: '', command: '', desired_port: '', is_primary: false });
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <div className="p-6 text-muted-foreground">Loading...</div>;
   if (error || !data) return (
-    <div className="p-6 space-y-4">
-      <h2 className="text-2xl font-bold tracking-tight">Project Not Found</h2>
+    <div className="p-6 space-y-4 animate-fade-up">
+      <h2 className="text-[28px] font-bold tracking-tight font-display">Project Not Found</h2>
       <p className="text-muted-foreground">This project may have been removed or the ID is invalid.</p>
       <p className="text-xs text-muted-foreground font-mono">{projectId}</p>
-      <a href="/" className="text-primary hover:underline text-sm">Back to Dashboard</a>
+      <Link href="/" className="text-primary hover:underline text-sm">Back to Dashboard</Link>
     </div>
   );
 
@@ -60,7 +62,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       }
       refetch();
       await refetchStatus();
-      // Use the actual assigned port for the URL
       const primaryPort = results.find((r: any) => r.assignedPort)?.assignedPort;
       if (primaryPort) {
         const url = `http://localhost:${primaryPort}`;
@@ -107,7 +108,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
   const anyRunning = services.some(s => runningServiceIds.has(s.id));
 
-  // Compute project URL for display
   const runningService = status?.running?.find((r: any) => services.some(s => s.id === r.serviceId));
   const directPort = runningService?.assignedPort;
   const route = status?.routes?.find((r: any) => r.slug === project.slug);
@@ -116,10 +116,19 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Back link */}
+      <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors animate-fade-up">
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </Link>
+
+      {/* Header */}
+      <div className="flex items-center justify-between animate-fade-up" style={{ animationDelay: '50ms' }}>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">{project.name}</h2>
-          <p className="text-sm text-muted-foreground font-mono">{project.path}</p>
+          <h2 className="text-[28px] font-bold tracking-tight font-display">{project.name}</h2>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-muted-foreground font-mono">{project.path}</p>
+          </div>
         </div>
         <div className="flex gap-2">
           {anyRunning ? (
@@ -130,9 +139,10 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Badges */}
+      <div className="flex items-center gap-2 animate-fade-up" style={{ animationDelay: '100ms' }}>
         <Badge variant="outline">{project.type}</Badge>
-        <Badge variant="outline">{project.slug}.localhost</Badge>
+        <Badge variant="outline" className="font-mono">{project.slug}.localhost</Badge>
         <Badge variant={anyRunning ? 'default' : 'secondary'}>
           {anyRunning ? 'Running' : 'Stopped'}
         </Badge>
@@ -143,79 +153,92 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      <Tabs defaultValue="services">
-        <TabsList>
-          <TabsTrigger value="services">Services ({services.length})</TabsTrigger>
-          <TabsTrigger value="logs">Logs</TabsTrigger>
-          <TabsTrigger value="preflight">Preflight</TabsTrigger>
-          <TabsTrigger value="env">Environment</TabsTrigger>
-          <TabsTrigger value="config">Config</TabsTrigger>
-        </TabsList>
+      {/* Tabs */}
+      <div className="animate-fade-up" style={{ animationDelay: '150ms' }}>
+        <Tabs defaultValue="services">
+          <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start gap-0 p-0 h-auto">
+            <TabsTrigger value="services" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm">
+              Services ({services.length})
+            </TabsTrigger>
+            <TabsTrigger value="logs" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm">
+              Logs
+            </TabsTrigger>
+            <TabsTrigger value="preflight" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm">
+              Preflight
+            </TabsTrigger>
+            <TabsTrigger value="env" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm">
+              Environment
+            </TabsTrigger>
+            <TabsTrigger value="config" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm">
+              Config
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="services" className="space-y-4 mt-4">
-          <div className="flex justify-end">
-            <Dialog open={addServiceOpen} onOpenChange={setAddServiceOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">Add Service</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Service</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Name</label>
-                    <Input value={newService.name} onChange={e => setNewService(s => ({ ...s, name: e.target.value }))} placeholder="e.g., dev, worker, redis" />
+          <TabsContent value="services" className="space-y-4 mt-6">
+            <div className="flex justify-end">
+              <Dialog open={addServiceOpen} onOpenChange={setAddServiceOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">Add Service</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Service</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Name</label>
+                      <Input value={newService.name} onChange={e => setNewService(s => ({ ...s, name: e.target.value }))} placeholder="e.g., dev, worker, redis" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Command</label>
+                      <Input value={newService.command} onChange={e => setNewService(s => ({ ...s, command: e.target.value }))} placeholder="npm run dev" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Desired Port (optional)</label>
+                      <Input value={newService.desired_port} onChange={e => setNewService(s => ({ ...s, desired_port: e.target.value }))} placeholder="3000" />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={newService.is_primary} onChange={e => setNewService(s => ({ ...s, is_primary: e.target.checked }))} />
+                      Primary service (receives subdomain traffic)
+                    </label>
+                    <Button onClick={handleAddService} disabled={!newService.name || !newService.command}>Add</Button>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">Command</label>
-                    <Input value={newService.command} onChange={e => setNewService(s => ({ ...s, command: e.target.value }))} placeholder="npm run dev" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Desired Port (optional)</label>
-                    <Input value={newService.desired_port} onChange={e => setNewService(s => ({ ...s, desired_port: e.target.value }))} placeholder="3000" />
-                  </div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={newService.is_primary} onChange={e => setNewService(s => ({ ...s, is_primary: e.target.checked }))} />
-                    Primary service (receives subdomain traffic)
-                  </label>
-                  <Button onClick={handleAddService} disabled={!newService.name || !newService.command}>Add</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+                </DialogContent>
+              </Dialog>
+            </div>
 
-          {services.map(svc => (
-            <ServiceCard
-              key={svc.id}
-              service={svc}
-              isRunning={runningServiceIds.has(svc.id)}
-              latestRun={runs.find(r => r.service_id === svc.id)}
-              onRefetch={() => { refetch(); refetchStatus(); }}
-            />
-          ))}
+            {services.map(svc => (
+              <ServiceCard
+                key={svc.id}
+                service={svc}
+                isRunning={runningServiceIds.has(svc.id)}
+                latestRun={runs.find(r => r.service_id === svc.id)}
+                onRefetch={() => { refetch(); refetchStatus(); }}
+              />
+            ))}
 
-          {services.length === 0 && (
-            <p className="text-center text-muted-foreground py-8">No services configured. Add one to get started.</p>
-          )}
-        </TabsContent>
+            {services.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">No services configured. Add one to get started.</p>
+            )}
+          </TabsContent>
 
-        <TabsContent value="logs" className="mt-4">
-          <LogViewer services={services} runs={runs} />
-        </TabsContent>
+          <TabsContent value="logs" className="mt-6">
+            <LogViewer services={services} runs={runs} />
+          </TabsContent>
 
-        <TabsContent value="preflight" className="mt-4">
-          <PreflightPanel projectId={projectId} />
-        </TabsContent>
+          <TabsContent value="preflight" className="mt-6">
+            <PreflightPanel projectId={projectId} />
+          </TabsContent>
 
-        <TabsContent value="env" className="mt-4">
-          <EnvPanel projectId={projectId} projectPath={project.path} />
-        </TabsContent>
+          <TabsContent value="env" className="mt-6">
+            <EnvPanel projectId={projectId} projectPath={project.path} />
+          </TabsContent>
 
-        <TabsContent value="config" className="mt-4">
-          <ConfigPanel project={project} onUpdate={refetch} />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="config" className="mt-6">
+            <ConfigPanel project={project} onUpdate={refetch} />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
@@ -237,7 +260,7 @@ function ConfigPanel({ project, onUpdate }: { project: any; onUpdate: () => void
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Project Configuration</CardTitle>
+        <CardTitle className="text-[15px] font-semibold">Project Configuration</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -250,7 +273,7 @@ function ConfigPanel({ project, onUpdate }: { project: any; onUpdate: () => void
         </div>
         <div>
           <label className="text-sm font-medium">Path</label>
-          <Input value={project.path} disabled />
+          <Input value={project.path} disabled className="font-mono" />
         </div>
         <div>
           <label className="text-sm font-medium">Type</label>

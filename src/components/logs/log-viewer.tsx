@@ -2,11 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useLogStream, LogEntry } from '@/lib/hooks/use-log-stream';
-import { useApi } from '@/lib/hooks/use-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
 interface LogViewerProps {
@@ -44,50 +41,53 @@ export function LogViewer({ services, runs }: LogViewerProps) {
   const serviceNameMap = new Map(services.map(s => [s.id, s.name]));
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Logs</CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant={connected ? 'default' : 'secondary'} className="text-xs">
-              {connected ? 'Live' : 'Disconnected'}
-            </Badge>
-            <Button size="sm" variant="ghost" onClick={clear}>Clear</Button>
-          </div>
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-3">
+          <span className="text-[15px] font-semibold">Logs</span>
+          <Badge variant={connected ? 'default' : 'secondary'} className="text-xs">
+            {connected ? 'Live' : 'Disconnected'}
+          </Badge>
         </div>
-        <div className="flex gap-2 mt-2">
-          <select
-            className="h-8 rounded-md border border-input bg-background px-3 text-xs"
-            value={selectedService || ''}
-            onChange={e => setSelectedService(e.target.value || undefined)}
-          >
-            <option value="">All services</option>
-            {services.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-          <Input
-            placeholder="Search logs..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="h-8 text-xs"
-          />
-        </div>
-      </CardHeader>
-      <CardContent>
+        <Button size="sm" variant="ghost" onClick={clear} className="text-xs text-muted-foreground">Clear</Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2 px-4 py-2 border-b border-border bg-muted/30">
+        <select
+          className="h-8 rounded-lg border border-border bg-background px-3 text-xs font-mono"
+          value={selectedService || ''}
+          onChange={e => setSelectedService(e.target.value || undefined)}
+        >
+          <option value="">All services</option>
+          {services.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <Input
+          placeholder="Search logs..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="h-8 text-xs"
+        />
+      </div>
+
+      {/* Log Content */}
+      <div className="bg-background">
         {showHistorical ? (
-          <div className="space-y-2">
+          <div className="space-y-2 p-4">
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Historical logs</span>
-              <Button size="sm" variant="ghost" onClick={() => setShowHistorical(false)}>Show Live</Button>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowHistorical(false)}>Show Live</Button>
             </div>
-            <pre className="font-mono text-xs bg-muted/50 rounded-md p-4 overflow-auto max-h-[500px] whitespace-pre-wrap">
+            <pre className="font-mono text-xs rounded-lg p-4 overflow-auto max-h-[500px] whitespace-pre-wrap text-foreground/80">
               {historicalLogs || 'No logs found.'}
             </pre>
           </div>
         ) : (
           <>
-            <div ref={scrollRef} className="font-mono text-xs bg-muted/50 rounded-md p-4 overflow-auto max-h-[500px] space-y-0.5">
+            <div ref={scrollRef} className="font-mono text-xs p-4 overflow-auto max-h-[500px] space-y-0.5">
               {filteredLogs.length === 0 ? (
                 <p className="text-muted-foreground">No log output yet. Start a service to see logs.</p>
               ) : (
@@ -98,7 +98,7 @@ export function LogViewer({ services, runs }: LogViewerProps) {
             </div>
 
             {runs.length > 0 && (
-              <div className="mt-3 space-y-1">
+              <div className="px-4 py-3 border-t border-border space-y-1">
                 <p className="text-xs text-muted-foreground font-medium">Previous runs:</p>
                 {runs.slice(0, 5).map(run => (
                   <button
@@ -113,8 +113,8 @@ export function LogViewer({ services, runs }: LogViewerProps) {
             )}
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -123,8 +123,8 @@ function LogLine({ entry, serviceName }: { entry: LogEntry; serviceName?: string
   const isWarn = /warn|warning/i.test(entry.text);
 
   return (
-    <div className={`${isError ? 'text-red-400' : isWarn ? 'text-yellow-400' : 'text-foreground/80'}`}>
-      <span className="text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+    <div className={`${isError ? 'text-red-400' : isWarn ? 'text-amber-400' : 'text-foreground/80'}`}>
+      <span className="text-muted-foreground/50">{new Date(entry.timestamp).toLocaleTimeString()}</span>
       {serviceName && <span className="text-primary ml-2">[{serviceName}]</span>}
       <span className="ml-2 whitespace-pre-wrap">{entry.text}</span>
     </div>
