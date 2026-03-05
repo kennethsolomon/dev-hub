@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { requireAuth } from '@/lib/auth/session';
 import fs from 'fs';
+import path from 'path';
+
+const LOGS_DIR = path.join(process.env.DEVHUB_ROOT || process.cwd(), 'data', 'logs');
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ runId: string }> }) {
+  if (!(await requireAuth())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { runId } = await params;
   const db = getDb();
   const run = db.prepare('SELECT * FROM runs WHERE id = ?').get(runId) as any;
@@ -33,8 +41,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ runI
   const tail = req.nextUrl.searchParams.get('tail');
   const search = req.nextUrl.searchParams.get('search');
 
+  // Ensure log_path is within the expected logs directory
+  const realLogPath = path.resolve(run.log_path);
+  const realLogsDir = path.resolve(LOGS_DIR);
+  if (!realLogPath.startsWith(realLogsDir + path.sep)) {
+    return NextResponse.json({ error: 'Invalid log path' }, { status: 400 });
+  }
+
   try {
-    let content = fs.readFileSync(run.log_path, 'utf-8');
+    let content = fs.readFileSync(realLogPath, 'utf-8');
 
     if (search) {
       const lines = content.split('\n');

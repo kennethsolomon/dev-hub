@@ -9,6 +9,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- Persistent logs and terminal state — survive tab switches without losing output
+- Per-run and bulk log deletion with "Previous runs" section showing relative timestamps
+- `useTerminal` hook for terminal state management above component lifecycle
+- DELETE endpoints for individual runs (`/api/logs/[runId]`) and bulk (`/api/projects/[id]/logs`)
+- Error diagnostics for NODE_MODULE_VERSION mismatch with one-click quickfix
+- Package manager auto-detection (pnpm/yarn/npm) for all quickfix actions
+- Auth guards and path validation on log API endpoints
 - Smart Environment Editor — view and manage `.env` variables from the UI
   - Reads `.env`, `.env.local`, `.env.development` files (never modifies them)
   - DB-backed overrides injected at runtime when starting services
@@ -24,6 +31,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Process manager uses `globalThis` singleton + detached spawning + DB rehydration to survive page refreshes
 
 ### Fixed
+- DB and log paths now anchored to project root via `DEVHUB_ROOT` (no more data loss when launched from different directories)
 - Services no longer appear stopped after browser refresh (process rehydration)
 - Correct URL shown after starting a project (direct port instead of stale subdomain proxy)
 - Port conflict false negatives when service binds on `::` (IPv6)

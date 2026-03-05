@@ -63,7 +63,7 @@ describe('GET /api/logs/[runId]', () => {
   });
 
   it('returns full log content', async () => {
-    mockDb({ id: 'r1', status: 'stopped', log_path: '/tmp/r1.log' });
+    mockDb({ id: 'r1', status: 'stopped', log_path: 'data/logs/r1.log' });
     vi.mocked(fs.readFileSync).mockReturnValue(logContent);
 
     const res = await GET(makeRequest(), makeParams('r1'));
@@ -75,7 +75,7 @@ describe('GET /api/logs/[runId]', () => {
   });
 
   it('filters by search term (case-insensitive)', async () => {
-    mockDb({ id: 'r1', status: 'stopped', log_path: '/tmp/r1.log' });
+    mockDb({ id: 'r1', status: 'stopped', log_path: 'data/logs/r1.log' });
     vi.mocked(fs.readFileSync).mockReturnValue(logContent);
 
     const res = await GET(makeRequest({ search: 'ERROR' }), makeParams('r1'));
@@ -84,7 +84,7 @@ describe('GET /api/logs/[runId]', () => {
   });
 
   it('returns last N lines with tail param', async () => {
-    mockDb({ id: 'r1', status: 'stopped', log_path: '/tmp/r1.log' });
+    mockDb({ id: 'r1', status: 'stopped', log_path: 'data/logs/r1.log' });
     vi.mocked(fs.readFileSync).mockReturnValue(logContent);
 
     const res = await GET(makeRequest({ tail: '2' }), makeParams('r1'));
@@ -96,7 +96,7 @@ describe('GET /api/logs/[runId]', () => {
   });
 
   it('applies search before tail when both provided', async () => {
-    mockDb({ id: 'r1', status: 'stopped', log_path: '/tmp/r1.log' });
+    mockDb({ id: 'r1', status: 'stopped', log_path: 'data/logs/r1.log' });
     vi.mocked(fs.readFileSync).mockReturnValue(logContent);
 
     // search for "info" gives 3 lines, then tail=1 gives last one
@@ -106,7 +106,7 @@ describe('GET /api/logs/[runId]', () => {
   });
 
   it('returns 500 when log file cannot be read', async () => {
-    mockDb({ id: 'r1', status: 'stopped', log_path: '/tmp/gone.log' });
+    mockDb({ id: 'r1', status: 'stopped', log_path: 'data/logs/gone.log' });
     vi.mocked(fs.readFileSync).mockImplementation(() => { throw new Error('ENOENT'); });
 
     const res = await GET(makeRequest(), makeParams('r1'));

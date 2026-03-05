@@ -57,10 +57,10 @@ export function LogViewer({ services, runs, projectId, logs: allLogs, connected,
   }, [filteredLogs]);
 
   // Refresh relative timestamps every 60s
-  const [, setTick] = useState(0);
+  const [, setTick] = useState(false);
   useEffect(() => {
     if (runs.length === 0) return;
-    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    const interval = setInterval(() => setTick(t => !t), 60000);
     return () => clearInterval(interval);
   }, [runs.length]);
 

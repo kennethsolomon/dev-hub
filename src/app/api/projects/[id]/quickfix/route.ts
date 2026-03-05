@@ -57,6 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     case 'reinstall-node-modules': {
       try {
+        const pm = detectPackageManager(project.path);
         const nodeModules = path.join(project.path, 'node_modules');
         if (fs.existsSync(nodeModules)) {
           const realNodeModules = fs.realpathSync(nodeModules);
@@ -66,7 +67,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
           fs.rmSync(nodeModules, { recursive: true, force: true });
         }
-        const pm = detectPackageManager(project.path);
         await execAsync(`/bin/zsh -lc '${pm} install'`, { cwd: project.path, timeout: 300000, encoding: 'utf-8' });
         return NextResponse.json({ ok: true, message: `node_modules reinstalled with ${pm}. Restart the service.` });
       } catch (err: any) {

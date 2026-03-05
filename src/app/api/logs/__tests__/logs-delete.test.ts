@@ -15,6 +15,10 @@ vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),
 }));
 
+vi.mock('@/lib/auth/session', () => ({
+  requireAuth: vi.fn().mockResolvedValue(true),
+}));
+
 import fs from 'fs';
 import { getDb } from '@/lib/db';
 import { DELETE as deleteRun } from '../[runId]/route';
