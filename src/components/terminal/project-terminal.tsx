@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-interface TerminalEntry {
+export interface TerminalEntry {
   command: string;
   output: string;
   exitCode: number;
@@ -11,13 +11,15 @@ interface TerminalEntry {
 interface ProjectTerminalProps {
   projectId: string;
   projectPath: string;
+  entries: TerminalEntry[];
+  setEntries: React.Dispatch<React.SetStateAction<TerminalEntry[]>>;
+  running: boolean;
+  runningCommand: string;
+  onRunCommand: (command: string) => void;
 }
 
-export function ProjectTerminal({ projectId, projectPath }: ProjectTerminalProps) {
-  const [entries, setEntries] = useState<TerminalEntry[]>([]);
+export function ProjectTerminal({ projectId, projectPath, entries, setEntries, running, runningCommand, onRunCommand }: ProjectTerminalProps) {
   const [input, setInput] = useState('');
-  const [running, setRunning] = useState(false);
-  const [runningCommand, setRunningCommand] = useState('');
   const [elapsed, setElapsed] = useState(0);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -39,41 +41,26 @@ export function ProjectTerminal({ projectId, projectPath }: ProjectTerminalProps
     return () => clearInterval(interval);
   }, [running]);
 
-  const runCommand = async () => {
+  // Focus input when command finishes
+  useEffect(() => {
+    if (!running) {
+      inputRef.current?.focus();
+    }
+  }, [running]);
+
+  const handleSubmit = () => {
     const command = input.trim();
     if (!command || running) return;
 
     setInput('');
-    setRunning(true);
-    setRunningCommand(command);
     setHistoryIndex(-1);
-
-    try {
-      const res = await fetch(`/api/projects/${projectId}/terminal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setEntries((prev) => [...prev, { command, output: data.output || '', exitCode: data.exitCode }]);
-      } else {
-        setEntries((prev) => [...prev, { command, output: data.error || 'Request failed', exitCode: 1 }]);
-      }
-    } catch {
-      setEntries((prev) => [...prev, { command, output: 'Network error — could not reach the server.', exitCode: 1 }]);
-    } finally {
-      setRunning(false);
-      setRunningCommand('');
-      inputRef.current?.focus();
-    }
+    onRunCommand(command);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      runCommand();
+      handleSubmit();
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (entries.length === 0) return;

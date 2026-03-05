@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import fs from 'fs';
 
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ runId: string }> }) {
+  const { runId } = await params;
+  const db = getDb();
+  const run = db.prepare('SELECT * FROM runs WHERE id = ?').get(runId) as any;
+  if (!run) {
+    return NextResponse.json({ error: 'Run not found' }, { status: 404 });
+  }
+  if (run.status === 'running') {
+    return NextResponse.json({ error: 'Cannot delete a running run' }, { status: 400 });
+  }
+
+  // Remove log file from disk
+  if (run.log_path) {
+    try { fs.unlinkSync(run.log_path); } catch {}
+  }
+
+  db.prepare('DELETE FROM runs WHERE id = ?').run(runId);
+  return NextResponse.json({ deleted: true });
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ runId: string }> }) {
   const { runId } = await params;
   const db = getDb();

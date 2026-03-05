@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApi, apiPost, apiPut, apiDelete } from '@/lib/hooks/use-api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,8 @@ import { ServiceCard } from '@/components/services/service-card';
 import { EnvPanel } from '@/components/projects/env-panel';
 import { ArrowLeft, ExternalLink, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { ProjectTerminal } from '@/components/terminal/project-terminal';
+import { ProjectTerminal, TerminalEntry } from '@/components/terminal/project-terminal';
+import { useLogStream, LogEntry } from '@/lib/hooks/use-log-stream';
 
 interface ProjectData {
   project: {
@@ -64,6 +65,33 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const [startingAll, setStartingAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
   const [addingService, setAddingService] = useState(false);
+  const [terminalEntries, setTerminalEntries] = useState<TerminalEntry[]>([]);
+  const [terminalRunning, setTerminalRunning] = useState(false);
+  const [terminalRunningCommand, setTerminalRunningCommand] = useState('');
+  const logStream = useLogStream();
+
+  const runTerminalCommand = useCallback(async (command: string) => {
+    setTerminalRunning(true);
+    setTerminalRunningCommand(command);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/terminal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTerminalEntries((prev) => [...prev, { command, output: data.output || '', exitCode: data.exitCode }]);
+      } else {
+        setTerminalEntries((prev) => [...prev, { command, output: data.error || 'Request failed', exitCode: 1 }]);
+      }
+    } catch {
+      setTerminalEntries((prev) => [...prev, { command, output: 'Network error — could not reach the server.', exitCode: 1 }]);
+    } finally {
+      setTerminalRunning(false);
+      setTerminalRunningCommand('');
+    }
+  }, [projectId]);
 
   const hasRunningServices = data?.runs?.some((r: any) => r.status === 'running') ?? false;
   useEffect(() => {
@@ -367,7 +395,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           </TabsContent>
 
           <TabsContent value="logs" className="mt-6">
-            <LogViewer services={services} runs={runs} projectId={projectId} />
+            <LogViewer services={services} runs={runs} projectId={projectId} logs={logStream.logs} connected={logStream.connected} clearLogs={logStream.clear} onRunsChanged={refetch} />
           </TabsContent>
 
           <TabsContent value="preflight" className="mt-6">
@@ -383,7 +411,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           </TabsContent>
 
           <TabsContent value="terminal" className="mt-6">
-            <ProjectTerminal projectId={projectId} projectPath={project.path} />
+            <ProjectTerminal projectId={projectId} projectPath={project.path} entries={terminalEntries} setEntries={setTerminalEntries} running={terminalRunning} runningCommand={terminalRunningCommand} onRunCommand={runTerminalCommand} />
           </TabsContent>
         </Tabs>
       </div>

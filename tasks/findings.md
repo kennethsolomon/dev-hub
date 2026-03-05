@@ -1,70 +1,62 @@
-# Findings — 2026-03-05 — Error Diagnostics & Fix Suggestions
+# Findings — 2026-03-06 — Persistent Logs & Terminal
 
 ## Problem Statement
-When a managed project crashes with a known error pattern (e.g., `NODE_MODULE_VERSION` mismatch for native modules), DevHub shows the raw error in the log viewer but doesn't recognize it or suggest a fix. Users must diagnose and fix manually.
+Live logs in the LogViewer and terminal entries in ProjectTerminal are stored in React component state. Navigating away from the tab (e.g., switching from Logs to Services) resets all state — logs disappear, terminal history is lost. Additionally, the "Previous Runs" section lacks timestamps and has no option to delete old log files.
 
 ## Requirements
-- Detect known error patterns in real-time log streams
-- Show inline diagnostic cards in the log viewer with step-by-step fix instructions
-- Offer one-click quickfix buttons for actionable fixes (e.g., `npm rebuild`)
-- Extensible pattern registry for adding new error types over time
-- Server-side quickfix execution via existing quickfix API pattern
+| Requirement | Details |
+|-------------|---------|
+| Logs: session persistence | Live log viewer retains entries when switching between tabs within ProjectDetail |
+| Logs: disk persistence + delete | Log files on disk survive indefinitely; user can delete individual runs or clear all |
+| Logs: timestamps on Previous Runs | Show started_at / stopped_at so user knows when each run happened |
+| Terminal: tab-switch persistence | Terminal history survives navigating between tabs within the same browser session |
+| Terminal: per-project | Terminal history is scoped per project (already the case) |
+| Terminal: clear all | "Clear all" button wipes terminal history (already exists, just needs to work with lifted state) |
 
-## Decisions
+## Chosen Approach: Lift State to Parent
+
+Move log and terminal state up to `ProjectDetail` so it lives above the `<Tabs>` component and survives tab switches.
+
+### Changes
+
+1. **`project-detail.tsx`**
+   - Call `useLogStream()` here; hold `logs`, `connected`, `clear` at this level
+   - Hold `terminalEntries` + `setTerminalEntries` state here
+   - Pass both down as props to child components
+
+2. **`log-viewer.tsx`**
+   - Receive `logs`, `connected`, `clear` as props (remove internal `useLogStream` call)
+   - Render `started_at` / `stopped_at` timestamps on each Previous Run entry
+   - Add per-run delete button (calls `DELETE /api/logs/[runId]`)
+   - Add "Clear All Logs" button (calls `DELETE /api/projects/[id]/logs`)
+
+3. **`project-terminal.tsx`**
+   - Receive `entries` + `setEntries` as props instead of local `useState`
+   - Keep all other logic (input, running state, history navigation) internal
+
+4. **New API: `DELETE /api/logs/[runId]/route.ts`**
+   - Deletes the run record from DB + removes log file from disk
+   - Returns 200 on success
+
+5. **New API: `DELETE /api/projects/[id]/logs/route.ts`**
+   - Deletes all non-running runs for the project + their log files
+   - Returns count of deleted runs
+
+### Key Decisions
 | Decision | Rationale |
 |----------|-----------|
-| Approach C: Hybrid client detection + server quickfixes | Best UX (real-time + actionable); builds on existing patterns; incrementally extensible |
-| Client-side pattern matching in log stream | Immediate feedback as errors appear; no server roundtrip for detection |
-| Server-side quickfix execution | Quickfixes need shell access (npm rebuild, etc.); reuse existing quickfix endpoint |
-| Shared error pattern registry | Single source of truth for patterns, diagnostics, and fix metadata |
-| Start with common Node.js errors | NODE_MODULE_VERSION mismatch, MODULE_NOT_FOUND, EADDRINUSE, command not found |
-
-## Architecture
-
-### Components
-
-1. **Error Pattern Registry** (`src/lib/diagnostics/patterns.ts`)
-   - Array of `{ id, regex, title, description, steps[], quickfix? }` objects
-   - Each pattern has human-readable fix steps and optional quickfix action
-   - Initial patterns: NODE_MODULE_VERSION, MODULE_NOT_FOUND, EADDRINUSE, EACCES, command not found
-
-2. **Log Viewer Enhancement** (`src/components/logs/log-viewer.tsx`)
-   - Import pattern registry; scan each log line against patterns
-   - When matched, render an `ErrorDiagnostic` card inline in the log stream
-   - Card shows: error title, description, numbered fix steps, optional "Fix" button
-   - Deduplicate: only show diagnostic once per pattern per session (not on every matching line)
-
-3. **Quickfix API Extension** (`src/app/api/projects/[id]/quickfix/route.ts`)
-   - Add new actions: `rebuild-native-modules`, `reinstall-node-modules`
-   - Runs `npm rebuild` or `rm -rf node_modules && npm install` in project directory
-   - Returns success/failure message
-
-4. **Process Manager Integration** (`src/lib/process/manager.ts`)
-   - On stderr output, check against pattern registry
-   - On process exit with non-zero code, emit `diagnostic` event with matched patterns
-   - Log viewer can listen for diagnostic events via SSE
-
-### Data Flow
-1. Service writes to stderr -> log stream delivers to client
-2. LogViewer scans line against pattern registry (client-side)
-3. First match for a pattern -> render ErrorDiagnostic card
-4. User clicks "Fix" -> POST to quickfix API with action + project context
-5. Quickfix API executes fix command in project directory
-6. User restarts service
-
-### Initial Error Patterns
-| Pattern | Regex | Quick Fix |
-|---------|-------|-----------|
-| Native module version mismatch | `NODE_MODULE_VERSION \d+.*requires.*NODE_MODULE_VERSION \d+` | `npm rebuild` |
-| Module not found | `Cannot find module '(.+)'` | `npm install` |
-| Port in use | `EADDRINUSE.*:(\d+)` | Kill process on port |
-| Permission denied | `EACCES.*permission denied` | Show chmod instructions |
-| Command not found | `command not found: (.+)` | Show install instructions |
+| Lift state to parent | Simplest way to survive tab switches; no DB changes needed for session state |
+| No DB for terminal history | Only tab-switch persistence needed, not cross-refresh |
+| Delete individual + bulk | Per-run delete for surgical cleanup; clear-all for housekeeping |
+| Timestamps from existing `runs` table | Data already exists (`started_at`, `stopped_at`), just not rendered |
 
 ## Open Questions
 - None — ready for planning.
 
 ## Previous Findings
+
+### Error Diagnostics (2026-03-05)
+See git history for prior findings on error diagnostics feature (implemented).
 
 ### Smart Env Editor (2026-03-05)
 See git history for prior findings on the env editor feature (implemented).

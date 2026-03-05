@@ -1,33 +1,44 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useLogStream, LogEntry } from '@/lib/hooks/use-log-stream';
+import { LogEntry } from '@/lib/hooks/use-log-stream';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { matchErrorPatterns } from '@/lib/diagnostics/patterns';
 import { ErrorDiagnostic } from './error-diagnostic';
+import { Trash2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface LogViewerProps {
   services: Array<{ id: string; name: string }>;
-  runs: Array<{ id: string; service_id: string; status: string; log_path: string | null }>;
+  runs: Array<{ id: string; service_id: string; status: string; log_path: string | null; started_at?: string; stopped_at?: string | null }>;
   projectId?: string;
+  logs: LogEntry[];
+  connected: boolean;
+  clearLogs: () => void;
+  onRunsChanged: () => void;
 }
 
-export function LogViewer({ services, runs, projectId }: LogViewerProps) {
+export function LogViewer({ services, runs, projectId, logs: allLogs, connected, clearLogs, onRunsChanged }: LogViewerProps) {
   const [selectedService, setSelectedService] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
-  const { logs, connected, clear } = useLogStream(selectedService);
   const [historicalLogs, setHistoricalLogs] = useState<string>('');
   const [showHistorical, setShowHistorical] = useState(false);
+  const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
+  const [clearingAll, setClearingAll] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const filteredLogs = useMemo(() =>
-    search
-      ? logs.filter(l => l.text.toLowerCase().includes(search.toLowerCase()))
-      : logs,
-    [logs, search]
-  );
+  // Filter by selected service, then by search text
+  const filteredLogs = useMemo(() => {
+    let filtered = selectedService
+      ? allLogs.filter(l => l.serviceId === selectedService)
+      : allLogs;
+    if (search) {
+      filtered = filtered.filter(l => l.text.toLowerCase().includes(search.toLowerCase()));
+    }
+    return filtered;
+  }, [allLogs, selectedService, search]);
 
   // Compute which log indices should show diagnostics (first occurrence only)
   const diagnosticMap = useMemo(() => {
@@ -49,7 +60,7 @@ export function LogViewer({ services, runs, projectId }: LogViewerProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [allLogs]);
 
   const loadHistorical = async (runId: string) => {
     try {
@@ -72,7 +83,7 @@ export function LogViewer({ services, runs, projectId }: LogViewerProps) {
             {connected ? 'Live' : 'Disconnected'}
           </Badge>
         </div>
-        <Button size="sm" variant="ghost" onClick={clear} className="text-xs text-muted-foreground">Clear</Button>
+        <Button size="sm" variant="ghost" onClick={clearLogs} className="text-xs text-muted-foreground">Clear</Button>
       </div>
 
       {/* Filters */}
@@ -132,16 +143,63 @@ export function LogViewer({ services, runs, projectId }: LogViewerProps) {
             </div>
 
             {runs.length > 0 && (
-              <div className="px-4 py-3 border-t border-border space-y-1">
-                <p className="text-xs text-muted-foreground font-medium">Previous runs:</p>
-                {runs.slice(0, 5).map(run => (
-                  <button
-                    key={run.id}
-                    className="text-xs text-primary hover:underline block"
-                    onClick={() => loadHistorical(run.id)}
-                  >
-                    {serviceNameMap.get(run.service_id) || 'unknown'} - {run.status} ({run.id.slice(0, 8)})
-                  </button>
+              <div className="px-4 py-3 border-t border-border space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground font-medium">Previous runs:</p>
+                  {projectId && runs.some(r => r.status !== 'running') && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs text-muted-foreground h-6 px-2"
+                      disabled={clearingAll}
+                      onClick={async () => {
+                        setClearingAll(true);
+                        try {
+                          const res = await fetch(`/api/projects/${projectId}/logs`, { method: 'DELETE' });
+                          const data = await res.json();
+                          toast.success(`Deleted ${data.deleted} log${data.deleted !== 1 ? 's' : ''}`);
+                          onRunsChanged();
+                        } catch { toast.error('Failed to clear logs'); }
+                        finally { setClearingAll(false); }
+                      }}
+                    >
+                      {clearingAll ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Clear All Logs'}
+                    </Button>
+                  )}
+                </div>
+                {runs.slice(0, 10).map(run => (
+                  <div key={run.id} className="flex items-center gap-2 group">
+                    <button
+                      className="text-xs text-primary hover:underline text-left flex-1"
+                      onClick={() => loadHistorical(run.id)}
+                    >
+                      {serviceNameMap.get(run.service_id) || 'unknown'} - {run.status}
+                      {run.started_at && (
+                        <span className="text-muted-foreground ml-1.5">
+                          {formatRunTime(run.started_at, run.stopped_at)}
+                        </span>
+                      )}
+                    </button>
+                    {run.status !== 'running' && (
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400"
+                        disabled={deletingRunId === run.id}
+                        onClick={async () => {
+                          setDeletingRunId(run.id);
+                          try {
+                            await fetch(`/api/logs/${run.id}`, { method: 'DELETE' });
+                            toast.success('Log deleted');
+                            onRunsChanged();
+                          } catch { toast.error('Failed to delete log'); }
+                          finally { setDeletingRunId(null); }
+                        }}
+                      >
+                        {deletingRunId === run.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Trash2 className="w-3 h-3" />}
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -150,6 +208,27 @@ export function LogViewer({ services, runs, projectId }: LogViewerProps) {
       </div>
     </div>
   );
+}
+
+function formatRunTime(startedAt: string, stoppedAt?: string | null): string {
+  const start = new Date(startedAt);
+  const now = new Date();
+  const diffMs = now.getTime() - start.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  let timeStr: string;
+  if (diffMins < 1) timeStr = 'just now';
+  else if (diffMins < 60) timeStr = `${diffMins}m ago`;
+  else if (diffMins < 1440) timeStr = `${Math.floor(diffMins / 60)}h ago`;
+  else timeStr = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  if (stoppedAt) {
+    const durationMs = new Date(stoppedAt).getTime() - start.getTime();
+    const durationSecs = Math.floor(durationMs / 1000);
+    const durStr = durationSecs < 60 ? `${durationSecs}s` : durationSecs < 3600 ? `${Math.floor(durationSecs / 60)}m` : `${Math.floor(durationSecs / 3600)}h`;
+    return `${timeStr} (ran ${durStr})`;
+  }
+  return timeStr;
 }
 
 function LogLine({ entry, serviceName }: { entry: LogEntry; serviceName?: string }) {
