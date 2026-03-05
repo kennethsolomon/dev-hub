@@ -1,23 +1,29 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useLogStream, LogEntry } from '@/lib/hooks/use-log-stream';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { matchErrorPatterns } from '@/lib/diagnostics/patterns';
+import { ErrorDiagnostic } from './error-diagnostic';
 
 interface LogViewerProps {
   services: Array<{ id: string; name: string }>;
   runs: Array<{ id: string; service_id: string; status: string; log_path: string | null }>;
+  projectId?: string;
 }
 
-export function LogViewer({ services, runs }: LogViewerProps) {
+export function LogViewer({ services, runs, projectId }: LogViewerProps) {
   const [selectedService, setSelectedService] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
   const { logs, connected, clear } = useLogStream(selectedService);
   const [historicalLogs, setHistoricalLogs] = useState<string>('');
   const [showHistorical, setShowHistorical] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Track which diagnostic patterns have been shown (deduplicate)
+  const seenDiagnostics = useMemo(() => new Set<string>(), []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -91,9 +97,27 @@ export function LogViewer({ services, runs }: LogViewerProps) {
               {filteredLogs.length === 0 ? (
                 <p className="text-muted-foreground">No log output yet. Start a service to see logs.</p>
               ) : (
-                filteredLogs.map((entry, i) => (
-                  <LogLine key={i} entry={entry} serviceName={serviceNameMap.get(entry.serviceId)} />
-                ))
+                filteredLogs.map((entry, i) => {
+                  const matches = matchErrorPatterns(entry.text);
+                  const newMatches = matches.filter((m) => {
+                    if (seenDiagnostics.has(m.id)) return false;
+                    seenDiagnostics.add(m.id);
+                    return true;
+                  });
+
+                  return (
+                    <div key={i}>
+                      <LogLine entry={entry} serviceName={serviceNameMap.get(entry.serviceId)} />
+                      {projectId && newMatches.map((pattern) => (
+                        <ErrorDiagnostic
+                          key={pattern.id}
+                          pattern={pattern}
+                          projectId={projectId}
+                        />
+                      ))}
+                    </div>
+                  );
+                })
               )}
             </div>
 

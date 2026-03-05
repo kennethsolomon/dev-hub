@@ -113,7 +113,7 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
   }
 
   return (
-    <div className="group flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-all duration-150 hover:border-primary/15">
+    <div className={`group flex items-center justify-between rounded-xl border bg-card px-4 py-3 transition-all duration-150 hover:border-primary/15 ${isRunning ? 'border-l-[3px] border-l-primary bg-primary/[0.02] border-border' : 'border-border'}`}>
       {/* Left: status + name + command */}
       <div className="flex items-center gap-3 min-w-0">
         <div className={`w-2 h-2 rounded-full shrink-0 ${isRunning ? 'bg-green-500 animate-pulse-ring' : 'bg-zinc-600'}`} />
