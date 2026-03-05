@@ -2,7 +2,8 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { MIGRATIONS } from './schema';
 
-const DB_PATH = path.join(process.cwd(), 'data', 'devhub.db');
+const PROJECT_ROOT = process.env.DEVHUB_ROOT || process.cwd();
+const DB_PATH = path.join(PROJECT_ROOT, 'data', 'devhub.db');
 
 // Use globalThis to survive Next.js HMR in dev mode
 const globalForDb = globalThis as unknown as { __devhub_db?: Database.Database };

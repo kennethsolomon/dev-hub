@@ -137,7 +137,7 @@ class ProcessManager extends EventEmitter {
     }
 
     // Prepare log file
-    const logDir = path.join(process.cwd(), 'data', 'logs');
+    const logDir = path.join(process.env.DEVHUB_ROOT || process.cwd(), 'data', 'logs');
     fs.mkdirSync(logDir, { recursive: true });
     const runId = uuid();
     const logPath = path.join(logDir, `${runId}.log`);
