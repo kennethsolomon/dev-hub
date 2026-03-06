@@ -88,7 +88,7 @@ export function UpdatesPageContent() {
       setReports(data.reports || []);
       setNotes(data.notes || []);
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || 'Scan failed');
     }
     setScanning(false);
   };

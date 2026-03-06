@@ -93,7 +93,9 @@ export function SettingsPageContent() {
       const res = await fetch('/api/discovery');
       const data = await res.json();
       setDiscoveredProjects(data.projects || []);
-    } catch {}
+    } catch (err: any) {
+      toast.error(err.message || 'Scan failed');
+    }
     setScanning(false);
   };
 

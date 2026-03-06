@@ -3,8 +3,10 @@ import { getDb, closeDb } from '../db';
 const SHUTDOWN_TIMEOUT = 30_000;
 
 let shutdownInProgress = false;
+let handlersRegistered = false;
 
 export function registerShutdownHandlers(): void {
+  if (handlersRegistered) return;
   const handler = async (signal: string) => {
     if (shutdownInProgress) return;
     shutdownInProgress = true;
@@ -59,10 +61,12 @@ export function registerShutdownHandlers(): void {
 
     // Re-raise the signal so Next.js (and Node) can do its own cleanup.
     // Remove our wrapper first to avoid infinite loop.
+    // Use setImmediate to let the event loop drain before re-raising,
+    // avoiding conflicts with Next.js's own partially-torn-down state.
     if (wrappers[signal]) {
       process.removeListener(signal, wrappers[signal]);
     }
-    process.kill(process.pid, signal);
+    setImmediate(() => process.kill(process.pid, signal));
   };
 
   // Use 'on' (not 'once') so the handler stays registered across HMR cycles.
@@ -74,5 +78,6 @@ export function registerShutdownHandlers(): void {
     process.prependListener(sig, wrappers[sig]);
   }
 
+  handlersRegistered = true;
   console.log('[DevHub] Shutdown handlers registered');
 }

@@ -19,10 +19,9 @@ interface ServiceCardProps {
     id: string; status: string; pid: number | null; assigned_port: number | null;
     started_at: string; stopped_at: string | null; exit_code: number | null;
   };
-  onRefetch: () => void;
 }
 
-export function ServiceCard({ service, isRunning, latestRun, onRefetch }: ServiceCardProps) {
+export function ServiceCard({ service, isRunning, latestRun }: ServiceCardProps) {
   const [editing, setEditing] = useState(false);
   const [command, setCommand] = useState(service.command);
   const [desiredPort, setDesiredPort] = useState(String(service.desired_port || ''));
@@ -55,7 +54,6 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
           toast.success(`${service.name} started`);
         }
       }
-      onRefetch();
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -65,7 +63,6 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
     try {
       await stopService.mutateAsync(service.id);
       toast.success(`${service.name} stopped`);
-      onRefetch();
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -80,7 +77,6 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
       });
       toast.success('Service updated');
       setEditing(false);
-      onRefetch();
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -91,7 +87,6 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
     try {
       await deleteService.mutateAsync(service.id);
       toast.success('Service deleted');
-      onRefetch();
     } catch (err: any) {
       toast.error(err.message);
     }

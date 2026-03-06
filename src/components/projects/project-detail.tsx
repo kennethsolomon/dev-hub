@@ -46,7 +46,7 @@ function formatUptime(ms: number): string {
 
 export function ProjectDetail({ projectId }: { projectId: string }) {
   const { data, isLoading: loading, error, refetch } = useProject(projectId);
-  const { data: status, refetch: refetchStatus } = useStatus();
+  const { data: status } = useStatus();
   const startProjectMut = useStartProject();
   const stopProjectMut = useStopProject();
   const deleteProjectMut = useDeleteProject();
@@ -110,7 +110,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           toast.warning(`Port ${r.portConflict.original} was busy -> assigned ${r.portConflict.assigned}`);
         }
       }
-      refetch();
       const primaryPort = results.find((r: any) => r.assignedPort)?.assignedPort;
       if (primaryPort) {
         const url = `http://localhost:${primaryPort}`;
@@ -133,7 +132,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
     try {
       await stopProjectMut.mutateAsync(projectId);
       toast.success('All services stopped');
-      refetch();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -153,7 +151,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       toast.success('Service added');
       setAddServiceOpen(false);
       setNewService({ name: '', command: '', desired_port: '' });
-      refetch();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -306,7 +303,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                   service={svc}
                   isRunning={runningServiceIds.has(svc.id)}
                   latestRun={runs.find(r => r.service_id === svc.id)}
-                  onRefetch={() => { refetch(); refetchStatus(); }}
+
+
                 />
               </div>
             ))}
