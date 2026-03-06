@@ -16,6 +16,7 @@ export async function PUT(req: NextRequest) {
   const allowedKeys = [
     'workspace_roots', 'subdomain_routing', 'portless_mode',
     'base_domain', 'bind_mode', 'proxy_port', 'lan_passcode_required', 'auth_enabled',
+    'stop_all_on_exit',
   ];
 
   for (const [key, value] of Object.entries(body)) {
