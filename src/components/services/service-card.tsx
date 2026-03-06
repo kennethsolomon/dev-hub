@@ -5,6 +5,7 @@ import { useStartService, useStopService, useUpdateService, useDeleteService } f
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,6 +14,7 @@ interface ServiceCardProps {
     id: string; name: string; command: string; desired_port: number | null;
     assigned_port: number | null; is_primary: number; restart_policy: string;
     depends_on_json: string; env_json: string; cwd: string | null;
+    restart_on_watch: number; watch_build_command: string | null;
   };
   isRunning: boolean;
   latestRun?: {
@@ -25,6 +27,8 @@ export function ServiceCard({ service, isRunning, latestRun }: ServiceCardProps)
   const [editing, setEditing] = useState(false);
   const [command, setCommand] = useState(service.command);
   const [desiredPort, setDesiredPort] = useState(String(service.desired_port || ''));
+  const [restartOnWatch, setRestartOnWatch] = useState(!!service.restart_on_watch);
+  const [watchBuildCommand, setWatchBuildCommand] = useState(service.watch_build_command || '');
   const startService = useStartService();
   const stopService = useStopService();
   const updateService = useUpdateService();
@@ -74,6 +78,8 @@ export function ServiceCard({ service, isRunning, latestRun }: ServiceCardProps)
         serviceId: service.id,
         command,
         desired_port: desiredPort ? parseInt(desiredPort) : null,
+        restart_on_watch: restartOnWatch ? 1 : 0,
+        watch_build_command: watchBuildCommand || null,
       });
       toast.success('Service updated');
       setEditing(false);
@@ -110,6 +116,27 @@ export function ServiceCard({ service, isRunning, latestRun }: ServiceCardProps)
           <label className="text-xs font-medium">Desired Port</label>
           <Input value={desiredPort} onChange={e => setDesiredPort(e.target.value)} placeholder="auto" />
         </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`watch-${service.id}`}
+            checked={restartOnWatch}
+            onCheckedChange={(checked) => setRestartOnWatch(!!checked)}
+          />
+          <label htmlFor={`watch-${service.id}`} className="text-xs font-medium cursor-pointer">
+            Restart on file change
+          </label>
+        </div>
+        {restartOnWatch && (
+          <div>
+            <label className="text-xs font-medium">Build command override</label>
+            <Input
+              value={watchBuildCommand}
+              onChange={e => setWatchBuildCommand(e.target.value)}
+              placeholder="Uses project build command if empty"
+              className="font-mono text-sm"
+            />
+          </div>
+        )}
         <div className="flex gap-2">
           <Button size="sm" disabled={saving} onClick={handleSave}>
             {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -130,6 +157,9 @@ export function ServiceCard({ service, isRunning, latestRun }: ServiceCardProps)
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold">{service.name}</span>
             {service.is_primary ? <Badge variant="outline" className="text-[10px] px-1.5 py-0">primary</Badge> : null}
+            {service.restart_on_watch ? (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">watch</Badge>
+            ) : null}
             {service.restart_policy !== 'no' && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">restart: {service.restart_policy}</Badge>
             )}

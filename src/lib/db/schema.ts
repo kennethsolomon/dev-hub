@@ -111,4 +111,15 @@ export const MIGRATIONS = [
         ('auth_enabled', 'false');
     `,
   },
+  {
+    version: 2,
+    up: `
+      ALTER TABLE projects ADD COLUMN auto_build_enabled INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE projects ADD COLUMN build_command TEXT;
+      ALTER TABLE projects ADD COLUMN watch_debounce_ms INTEGER NOT NULL DEFAULT 2000;
+
+      ALTER TABLE services ADD COLUMN restart_on_watch INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE services ADD COLUMN watch_build_command TEXT;
+    `,
+  },
 ];

@@ -7,7 +7,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json();
   const db = getDb();
 
-  const allowedFields = ['name', 'command', 'cwd', 'env_json', 'desired_port', 'is_primary', 'depends_on_json', 'readiness_json', 'restart_policy', 'stop_signal', 'stop_timeout'];
+  const allowedFields = ['name', 'command', 'cwd', 'env_json', 'desired_port', 'is_primary', 'depends_on_json', 'readiness_json', 'restart_policy', 'stop_signal', 'stop_timeout', 'restart_on_watch', 'watch_build_command'];
   const sets: string[] = [];
   const values: any[] = [];
 

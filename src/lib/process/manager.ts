@@ -2,10 +2,11 @@ import { ChildProcess, spawn } from 'child_process';
 import { v4 as uuid } from 'uuid';
 import path from 'path';
 import fs from 'fs';
-import { getDb, Service, Run } from '../db';
+import { getDb, Service, Run, Project } from '../db';
 import { getOsAdapter } from '../os/adapter';
 import { findFreePort, persistAssignedPort } from './port-allocator';
 import { EventEmitter } from 'events';
+import { getFileWatcherManager } from './file-watcher';
 
 export interface ServiceProcess {
   serviceId: string;
@@ -363,6 +364,12 @@ class ProcessManager extends EventEmitter {
       }
     }
 
+    // Start file watcher if auto-build is enabled
+    const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId) as Project | undefined;
+    if (project?.auto_build_enabled) {
+      getFileWatcherManager().startWatching(projectId);
+    }
+
     return results;
   }
 
@@ -371,6 +378,9 @@ class ProcessManager extends EventEmitter {
     const services = db.prepare('SELECT id FROM services WHERE project_id = ?').all(projectId) as Array<{ id: string }>;
 
     await Promise.all(services.map(s => this.stopService(s.id)));
+
+    // Stop file watcher when project stops
+    getFileWatcherManager().stopWatching(projectId);
   }
 }
 
