@@ -59,6 +59,15 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const terminal = useTerminal(projectId);
   const logStream = useLogStream();
 
+  const earliestStart = useMemo(() => {
+    const runs = data?.runs;
+    if (!runs) return null;
+    const runningRuns = runs.filter(r => r.status === 'running' && r.started_at);
+    return runningRuns.length > 0
+      ? Math.min(...runningRuns.map(r => new Date(r.started_at).getTime()))
+      : null;
+  }, [data?.runs]);
+
   if (loading) return (
     <div className="p-6 space-y-6 animate-fade-up">
       <div className="h-4 w-16 rounded bg-muted animate-pulse" />
@@ -178,12 +187,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const useSubdomain = route?.url && !route.url.includes(':4400');
   const projectUrl = useSubdomain ? route.url : (directPort ? `http://localhost:${directPort}` : null);
 
-  const earliestStart = useMemo(() => {
-    const runningRuns = runs.filter(r => r.status === 'running' && r.started_at);
-    return runningRuns.length > 0
-      ? Math.min(...runningRuns.map(r => new Date(r.started_at).getTime()))
-      : null;
-  }, [runs]);
 
   return (
     <div className="p-6 space-y-6">
