@@ -35,7 +35,7 @@ npm run build
 npm start
 ```
 
-DevHub runs on `http://localhost:3000` by default.
+DevHub runs on `http://localhost:9000` by default.
 
 ## Configuration
 

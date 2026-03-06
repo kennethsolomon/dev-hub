@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 9000",
     "build": "next build",
     "build:prod": "next build",
     "build:watch": "nodemon --watch src --ext ts,tsx,css --exec 'next build'",
-    "start": "next start",
+    "start": "next start -p 9000",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest"
