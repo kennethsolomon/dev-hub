@@ -1,39 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useApi, apiPost, apiPut, apiDelete } from '@/lib/hooks/use-api';
+import { useState, useEffect, useMemo } from 'react';
+import { useProject, useStatus } from '@/lib/query/hooks';
+import { useStartProject, useStopProject, useDeleteProject, useCreateService, useUpdateProject } from '@/lib/query/mutations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { LogViewer } from '@/components/logs/log-viewer';
-import { PreflightPanel } from '@/components/projects/preflight-panel';
 import { ServiceCard } from '@/components/services/service-card';
-import { EnvPanel } from '@/components/projects/env-panel';
 import { ArrowLeft, ExternalLink, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { ProjectTerminal } from '@/components/terminal/project-terminal';
+import dynamic from 'next/dynamic';
+
+const LogViewer = dynamic(() => import('@/components/logs/log-viewer').then(m => m.LogViewer));
+const PreflightPanel = dynamic(() => import('@/components/projects/preflight-panel').then(m => m.PreflightPanel));
+const EnvPanel = dynamic(() => import('@/components/projects/env-panel').then(m => m.EnvPanel));
+const ProjectTerminal = dynamic(() => import('@/components/terminal/project-terminal').then(m => m.ProjectTerminal));
 import { useLogStream } from '@/lib/hooks/use-log-stream';
 import { useTerminal } from '@/lib/hooks/use-terminal';
 
-interface ProjectData {
-  project: {
-    id: string; name: string; slug: string; path: string; type: string;
-    config_json: string | null; created_at: string; updated_at: string;
-  };
-  services: Array<{
-    id: string; name: string; command: string; desired_port: number | null;
-    assigned_port: number | null; is_primary: number; restart_policy: string;
-    depends_on_json: string; env_json: string; cwd: string | null;
-  }>;
-  runs: Array<{
-    id: string; service_id: string; status: string; pid: number | null;
-    assigned_port: number | null; started_at: string; stopped_at: string | null;
-    exit_code: number | null; log_path: string | null;
-  }>;
-}
 
 const tabClass = 'rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm';
 
@@ -58,23 +45,19 @@ function formatUptime(ms: number): string {
 }
 
 export function ProjectDetail({ projectId }: { projectId: string }) {
-  const { data, loading, error, refetch } = useApi<ProjectData>(`/api/projects/${projectId}`);
-  const { data: status, refetch: refetchStatus } = useApi<any>('/api/status');
+  const { data, isLoading: loading, error, refetch } = useProject(projectId);
+  const { data: status } = useStatus();
+  const startProjectMut = useStartProject();
+  const stopProjectMut = useStopProject();
+  const deleteProjectMut = useDeleteProject();
+  const createServiceMut = useCreateService();
   const [addServiceOpen, setAddServiceOpen] = useState(false);
-  const [newService, setNewService] = useState({ name: '', command: '', desired_port: '', is_primary: false });
-  const [now, setNow] = useState(Date.now());
+  const [newService, setNewService] = useState({ name: '', command: '', desired_port: '' });
   const [startingAll, setStartingAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
   const [addingService, setAddingService] = useState(false);
   const terminal = useTerminal(projectId);
   const logStream = useLogStream();
-
-  const hasRunningServices = data?.runs?.some((r: any) => r.status === 'running') ?? false;
-  useEffect(() => {
-    if (!hasRunningServices) return;
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, [hasRunningServices]);
 
   if (loading) return (
     <div className="p-6 space-y-6 animate-fade-up">
@@ -121,14 +104,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const handleStartAll = async () => {
     setStartingAll(true);
     try {
-      const results = await apiPost(`/api/projects/${projectId}/start`);
+      const results = await startProjectMut.mutateAsync(projectId);
       for (const r of results) {
         if (r.portConflict) {
           toast.warning(`Port ${r.portConflict.original} was busy -> assigned ${r.portConflict.assigned}`);
         }
       }
-      refetch();
-      await refetchStatus();
       const primaryPort = results.find((r: any) => r.assignedPort)?.assignedPort;
       if (primaryPort) {
         const url = `http://localhost:${primaryPort}`;
@@ -149,10 +130,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const handleStopAll = async () => {
     setStoppingAll(true);
     try {
-      await apiPost(`/api/projects/${projectId}/stop`);
+      await stopProjectMut.mutateAsync(projectId);
       toast.success('All services stopped');
-      refetch();
-      refetchStatus();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -163,17 +142,15 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const handleAddService = async () => {
     setAddingService(true);
     try {
-      await apiPost('/api/services', {
+      await createServiceMut.mutateAsync({
         project_id: projectId,
         name: newService.name,
         command: newService.command,
         desired_port: newService.desired_port ? parseInt(newService.desired_port) : null,
-        is_primary: newService.is_primary,
       });
       toast.success('Service added');
       setAddServiceOpen(false);
-      setNewService({ name: '', command: '', desired_port: '', is_primary: false });
-      refetch();
+      setNewService({ name: '', command: '', desired_port: '' });
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -184,7 +161,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const handleDeleteProject = async () => {
     if (!confirm('Delete this project from DevHub? This will not delete any files on disk.')) return;
     try {
-      await apiDelete(`/api/projects/${projectId}`);
+      await deleteProjectMut.mutateAsync(projectId);
       toast.success('Project removed');
       window.location.href = '/';
     } catch (err: any) {
@@ -201,12 +178,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const useSubdomain = route?.url && !route.url.includes(':4400');
   const projectUrl = useSubdomain ? route.url : (directPort ? `http://localhost:${directPort}` : null);
 
-  // Find earliest running service start time for uptime
-  const runningRuns = runs.filter(r => r.status === 'running' && r.started_at);
-  const earliestStart = runningRuns.length > 0
-    ? Math.min(...runningRuns.map(r => new Date(r.started_at).getTime()))
-    : null;
-  const uptimeMs = earliestStart ? now - earliestStart : -1;
+  const earliestStart = useMemo(() => {
+    const runningRuns = runs.filter(r => r.status === 'running' && r.started_at);
+    return runningRuns.length > 0
+      ? Math.min(...runningRuns.map(r => new Date(r.started_at).getTime()))
+      : null;
+  }, [runs]);
 
   return (
     <div className="p-6 space-y-6">
@@ -277,13 +254,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           )}
           <p className="text-xs text-muted-foreground mt-1">Port</p>
         </div>
-        <div className="rounded-xl bg-card border border-border p-4">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-            <p className="text-lg font-bold font-display">{formatUptime(uptimeMs)}</p>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Uptime</p>
-        </div>
+        <UptimeDisplay earliestStart={earliestStart} />
       </div>
 
       {/* Badges */}
@@ -332,7 +303,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                   service={svc}
                   isRunning={runningServiceIds.has(svc.id)}
                   latestRun={runs.find(r => r.service_id === svc.id)}
-                  onRefetch={() => { refetch(); refetchStatus(); }}
                 />
               </div>
             ))}
@@ -383,7 +353,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           </TabsContent>
 
           <TabsContent value="config" className="mt-6">
-            <ConfigPanel project={project} onUpdate={refetch} onDelete={handleDeleteProject} />
+            <ConfigPanel project={project} onDelete={handleDeleteProject} />
           </TabsContent>
 
           <TabsContent value="terminal" className="mt-6">
@@ -401,8 +371,8 @@ function AddServiceDialog({
   handleAddService,
   adding,
 }: {
-  newService: { name: string; command: string; desired_port: string; is_primary: boolean };
-  setNewService: React.Dispatch<React.SetStateAction<{ name: string; command: string; desired_port: string; is_primary: boolean }>>;
+  newService: { name: string; command: string; desired_port: string };
+  setNewService: React.Dispatch<React.SetStateAction<{ name: string; command: string; desired_port: string }>>;
   handleAddService: () => void;
   adding: boolean;
 }) {
@@ -424,10 +394,6 @@ function AddServiceDialog({
           <label className="text-sm font-medium">Desired Port (optional)</label>
           <Input value={newService.desired_port} onChange={e => setNewService(s => ({ ...s, desired_port: e.target.value }))} placeholder="3000" />
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={newService.is_primary} onChange={e => setNewService(s => ({ ...s, is_primary: e.target.checked }))} />
-          Primary service (receives subdomain traffic)
-        </label>
         <Button onClick={handleAddService} disabled={!newService.name || !newService.command || adding}>
           {adding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           {adding ? 'Adding...' : 'Add'}
@@ -437,21 +403,39 @@ function AddServiceDialog({
   );
 }
 
-function ConfigPanel({ project, onUpdate, onDelete }: { project: any; onUpdate: () => void; onDelete: () => void }) {
+function UptimeDisplay({ earliestStart }: { earliestStart: number | null }) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!earliestStart) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [earliestStart]);
+
+  const uptimeMs = earliestStart ? now - earliestStart : -1;
+
+  return (
+    <div className="rounded-xl bg-card border border-border p-4">
+      <div className="flex items-center gap-1.5">
+        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+        <p className="text-lg font-bold font-display">{formatUptime(uptimeMs)}</p>
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">Uptime</p>
+    </div>
+  );
+}
+
+function ConfigPanel({ project, onDelete }: { project: any; onDelete: () => void }) {
   const [name, setName] = useState(project.name);
   const [slug, setSlug] = useState(project.slug);
-  const [saving, setSaving] = useState(false);
+  const updateProject = useUpdateProject();
 
   const handleSave = async () => {
-    setSaving(true);
     try {
-      await apiPut(`/api/projects/${project.id}`, { name, slug });
+      await updateProject.mutateAsync({ projectId: project.id, name, slug });
       toast.success('Project updated');
-      onUpdate();
     } catch (err: any) {
       toast.error(err.message);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -481,9 +465,9 @@ function ConfigPanel({ project, onUpdate, onDelete }: { project: any; onUpdate: 
             <label className="text-sm font-medium">Type</label>
             <Input value={project.type} disabled />
           </div>
-          <Button disabled={saving} onClick={handleSave}>
-            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            {saving ? 'Saving...' : 'Save Changes'}
+          <Button disabled={updateProject.isPending} onClick={handleSave}>
+            {updateProject.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {updateProject.isPending ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>

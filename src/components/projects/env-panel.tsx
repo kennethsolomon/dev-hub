@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useApi, apiPut } from '@/lib/hooks/use-api';
+import { useProjectEnv, type EnvVariable } from '@/lib/query/hooks';
+import { useUpdateEnv } from '@/lib/query/mutations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -9,24 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface EnvVariable {
-  key: string;
-  fileValue: string | null;
-  source: string | null;
-  override: string | null;
-  effective: string;
-  isPort: boolean;
-  isSecret: boolean;
-  portStatus?: 'free' | 'in-use' | null;
-}
-
-interface EnvData {
-  files: string[];
-  variables: EnvVariable[];
-}
-
 export function EnvPanel({ projectId, projectPath }: { projectId: string; projectPath: string }) {
-  const { data, loading, refetch } = useApi<EnvData>(`/api/projects/${projectId}/env`);
+  const { data, isLoading: loading, refetch } = useProjectEnv(projectId);
+  const updateEnv = useUpdateEnv();
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
@@ -46,10 +32,9 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
   const handleSave = async (key: string) => {
     setSavingKey(key);
     try {
-      await apiPut(`/api/projects/${projectId}/env`, { key, value: editValue });
+      await updateEnv.mutateAsync({ projectId, key, value: editValue });
       toast.success(`Override saved for ${key}`);
       setEditingKey(null);
-      refetch();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -60,9 +45,8 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
   const handleRemoveOverride = async (key: string) => {
     setRemovingKey(key);
     try {
-      await apiPut(`/api/projects/${projectId}/env`, { key, value: null });
+      await updateEnv.mutateAsync({ projectId, key, value: null });
       toast.success(`Override removed for ${key}`);
-      refetch();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -74,12 +58,11 @@ export function EnvPanel({ projectId, projectPath }: { projectId: string; projec
     if (!newKey.trim()) return;
     setAdding(true);
     try {
-      await apiPut(`/api/projects/${projectId}/env`, { key: newKey.trim(), value: newValue });
+      await updateEnv.mutateAsync({ projectId, key: newKey.trim(), value: newValue });
       toast.success(`Added override for ${newKey}`);
       setAddOpen(false);
       setNewKey('');
       setNewValue('');
-      refetch();
     } catch (err: any) {
       toast.error(err.message);
     } finally {

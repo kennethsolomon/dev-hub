@@ -9,6 +9,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- Graceful shutdown: stop all managed processes when DevHub exits (configurable via "Stop all on exit" setting)
+- macOS LaunchAgent for auto-start on login (`scripts/install-agent.sh`, `scripts/uninstall-agent.sh`)
+- TanStack Query for data fetching with caching, deduplication, and automatic invalidation
+- 15 new tests: shutdown handler (5) and query keys (10)
 - Persistent logs and terminal state — survive tab switches without losing output
 - Per-run and bulk log deletion with "Previous runs" section showing relative timestamps
 - `useTerminal` hook for terminal state management above component lifecycle
@@ -26,11 +30,20 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Env parser tests for file reading, quote handling, and detection heuristics
 
 ### Changed
+- Migrated all data fetching from custom `useApi` hooks to TanStack Query hooks and mutations
+- Converted settings, stacks, and updates pages to server components with client shell pattern
+- Code-split heavy tab content (LogViewer, PreflightPanel, EnvPanel, Terminal) with `next/dynamic`
+- Extracted `UptimeDisplay` into isolated component to prevent 1s re-render propagation
 - Port detection checks both IPv4 and IPv6 interfaces (fixes Next.js IPv6 binding)
 - Subdomain routing returns direct `localhost:{port}` URLs unless portless mode is active
 - Process manager uses `globalThis` singleton + detached spawning + DB rehydration to survive page refreshes
 
+### Removed
+- `src/lib/hooks/use-api.ts` (replaced by `src/lib/query/`)
+
 ### Fixed
+- Shutdown handler: correct `removeListener` target, variable shadowing, dangling timeout
+- Service mutations now invalidate project queries for fresh views after delete/update
 - DB and log paths now anchored to project root via `DEVHUB_ROOT` (no more data loss when launched from different directories)
 - Services no longer appear stopped after browser refresh (process rehydration)
 - Correct URL shown after starting a project (direct port instead of stale subdomain proxy)

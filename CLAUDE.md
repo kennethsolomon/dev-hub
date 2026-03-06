@@ -51,7 +51,7 @@ npm start            # Production server
 | `updates/advisor.ts` | npm/composer outdated scanning |
 | `preflight/checks.ts` | Pre-start validation |
 | `auth/session.ts` | bcrypt passcode + in-memory sessions |
-| `hooks/use-api.ts` | Client-side fetch hooks (`useApi`, `apiPost`, etc.) |
+| `query/` | TanStack Query hooks, mutations, keys, and provider |
 | `os/adapter.ts` | macOS adapter (cross-platform extensible) |
 
 ### API Routes (23 endpoints)

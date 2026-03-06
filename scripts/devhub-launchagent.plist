@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  DevHub LaunchAgent
+  Auto-starts DevHub on login. Installed by scripts/install-agent.sh.
+  Logs: /tmp/devhub-stdout.log, /tmp/devhub-stderr.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.devhub.server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <!-- Use zsh -lc to load shell profile (nvm, PATH, etc.) -->
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd __DEVHUB_ROOT__ &amp;&amp; npm start</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/devhub-stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/devhub-stderr.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DEVHUB_ROOT</key>
+    <string>__DEVHUB_ROOT__</string>
+  </dict>
+</dict>
+</plist>

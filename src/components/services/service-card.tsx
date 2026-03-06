@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { apiPost, apiPut, apiDelete } from '@/lib/hooks/use-api';
+import { useStartService, useStopService, useUpdateService, useDeleteService } from '@/lib/query/mutations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -19,22 +19,25 @@ interface ServiceCardProps {
     id: string; status: string; pid: number | null; assigned_port: number | null;
     started_at: string; stopped_at: string | null; exit_code: number | null;
   };
-  onRefetch: () => void;
 }
 
-export function ServiceCard({ service, isRunning, latestRun, onRefetch }: ServiceCardProps) {
+export function ServiceCard({ service, isRunning, latestRun }: ServiceCardProps) {
   const [editing, setEditing] = useState(false);
   const [command, setCommand] = useState(service.command);
   const [desiredPort, setDesiredPort] = useState(String(service.desired_port || ''));
-  const [starting, setStarting] = useState(false);
-  const [stopping, setStopping] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const startService = useStartService();
+  const stopService = useStopService();
+  const updateService = useUpdateService();
+  const deleteService = useDeleteService();
+
+  const starting = startService.isPending;
+  const stopping = stopService.isPending;
+  const saving = updateService.isPending;
+  const deleting = deleteService.isPending;
 
   const handleStart = async () => {
-    setStarting(true);
     try {
-      const result = await apiPost(`/api/services/${service.id}/start`);
+      const result = await startService.mutateAsync(service.id);
       if (result.portConflict) {
         toast.warning(
           `Port ${result.portConflict.original} was busy -> assigned ${result.portConflict.assigned} for this run (and saved).`
@@ -51,55 +54,41 @@ export function ServiceCard({ service, isRunning, latestRun, onRefetch }: Servic
           toast.success(`${service.name} started`);
         }
       }
-      onRefetch();
     } catch (err: any) {
       toast.error(err.message);
-    } finally {
-      setStarting(false);
     }
   };
 
   const handleStop = async () => {
-    setStopping(true);
     try {
-      await apiPost(`/api/services/${service.id}/stop`);
+      await stopService.mutateAsync(service.id);
       toast.success(`${service.name} stopped`);
-      onRefetch();
     } catch (err: any) {
       toast.error(err.message);
-    } finally {
-      setStopping(false);
     }
   };
 
   const handleSave = async () => {
-    setSaving(true);
     try {
-      await apiPut(`/api/services/${service.id}`, {
+      await updateService.mutateAsync({
+        serviceId: service.id,
         command,
         desired_port: desiredPort ? parseInt(desiredPort) : null,
       });
       toast.success('Service updated');
       setEditing(false);
-      onRefetch();
     } catch (err: any) {
       toast.error(err.message);
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleDelete = async () => {
     if (!confirm(`Delete service "${service.name}"?`)) return;
-    setDeleting(true);
     try {
-      await apiDelete(`/api/services/${service.id}`);
+      await deleteService.mutateAsync(service.id);
       toast.success('Service deleted');
-      onRefetch();
     } catch (err: any) {
       toast.error(err.message);
-    } finally {
-      setDeleting(false);
     }
   };
 

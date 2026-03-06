@@ -8,6 +8,13 @@ const DB_PATH = path.join(PROJECT_ROOT, 'data', 'devhub.db');
 // Use globalThis to survive Next.js HMR in dev mode
 const globalForDb = globalThis as unknown as { __devhub_db?: Database.Database };
 
+export function closeDb(): void {
+  if (globalForDb.__devhub_db) {
+    try { globalForDb.__devhub_db.close(); } catch {}
+    globalForDb.__devhub_db = undefined;
+  }
+}
+
 export function getDb(): Database.Database {
   if (globalForDb.__devhub_db) return globalForDb.__devhub_db;
 
