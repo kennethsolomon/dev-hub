@@ -9,6 +9,16 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- Auto-build file watcher: detects file changes in project directories and triggers rebuilds automatically
+  - Per-project toggle to enable/disable auto-build with configurable debounce (1s/2s/5s)
+  - Per-service opt-in checkbox to restart on file changes
+  - Configurable build command per project with optional per-service override
+  - Hardcoded ignore patterns (node_modules, .git, .next, dist, build, vendor, etc.)
+  - Manual "Build & Restart" button independent of auto-build toggle
+  - Real-time build status banner with animated progress bar (phases: change-detected → building → restarting → complete/error)
+  - SSE endpoint (`GET /api/build/stream`) for live build phase streaming
+  - Manual trigger endpoint (`POST /api/projects/[id]/build`)
+  - 32 new tests for FileWatcherManager, build API routes, and SSE streaming
 - Graceful shutdown: stop all managed processes when DevHub exits (configurable via "Stop all on exit" setting)
 - macOS LaunchAgent for auto-start on login (`scripts/install-agent.sh`, `scripts/uninstall-agent.sh`)
 - TanStack Query for data fetching with caching, deduplication, and automatic invalidation
