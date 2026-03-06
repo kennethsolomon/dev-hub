@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useApi, apiPost, apiDelete } from '@/lib/hooks/use-api';
+import { useState, useMemo } from 'react';
+import { useProjects, useStatus, useSettings, type ProjectRow, type StatusData } from '@/lib/query/hooks';
+import { useStartProject, useStopProject, useDeleteProject, useImportProject } from '@/lib/query/mutations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -10,24 +11,13 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Search, X, RefreshCw, Loader2 } from 'lucide-react';
 
-interface ProjectRow {
-  id: string;
-  name: string;
-  slug: string;
-  path: string;
-  type: string;
-  service_count: number;
-  primary_port: number | null;
-}
-
-interface StatusData {
-  running: Array<{ serviceId: string; runId: string; pid: number; assignedPort: number | null }>;
-  routes: Array<{ slug: string; projectName: string; port: number; running: boolean; url: string }>;
-}
-
 export function Dashboard() {
-  const { data: projects, refetch } = useApi<ProjectRow[]>('/api/projects');
-  const { data: status, refetch: refetchStatus } = useApi<StatusData>('/api/status');
+  const { data: projects, refetch } = useProjects();
+  const { data: status, refetch: refetchStatus } = useStatus();
+  const startProject = useStartProject();
+  const stopProject = useStopProject();
+  const deleteProject = useDeleteProject();
+  const importProject = useImportProject();
   const [addOpen, setAddOpen] = useState(false);
   const [addPath, setAddPath] = useState('');
   const [addName, setAddName] = useState('');
@@ -52,11 +42,10 @@ export function Dashboard() {
   const handleAdd = async () => {
     setImporting(true);
     try {
-      await apiPost('/api/projects', { action: 'import', path: addPath });
+      await importProject.mutateAsync(addPath);
       toast.success('Project imported');
       setAddOpen(false);
       setAddPath('');
-      refetch();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -67,13 +56,12 @@ export function Dashboard() {
   const handleStartProject = async (projectId: string) => {
     setStartingId(projectId);
     try {
-      const results = await apiPost(`/api/projects/${projectId}/start`);
+      const results = await startProject.mutateAsync(projectId);
       for (const r of results) {
         if (r.portConflict) {
           toast.warning(`Port ${r.portConflict.original} was busy -> assigned ${r.portConflict.assigned}`);
         }
       }
-      await refetchStatus();
       const primaryPort = results.find((r: any) => r.assignedPort)?.assignedPort;
       if (primaryPort) {
         const url = `http://localhost:${primaryPort}`;
@@ -94,9 +82,8 @@ export function Dashboard() {
   const handleStopProject = async (projectId: string) => {
     setStoppingId(projectId);
     try {
-      await apiPost(`/api/projects/${projectId}/stop`);
+      await stopProject.mutateAsync(projectId);
       toast.success('Project stopped');
-      refetchStatus();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -108,9 +95,8 @@ export function Dashboard() {
     if (!confirm('Delete this project from DevHub?')) return;
     setDeletingId(projectId);
     try {
-      await apiDelete(`/api/projects/${projectId}`);
+      await deleteProject.mutateAsync(projectId);
       toast.success('Project removed');
-      refetch();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -125,7 +111,7 @@ export function Dashboard() {
 
   const projectTypes = [...new Set(projects?.map(p => p.type) || [])];
 
-  const filteredProjects = projects?.filter(p => {
+  const filteredProjects = useMemo(() => projects?.filter(p => {
     if (search) {
       const q = search.toLowerCase();
       if (!p.name.toLowerCase().includes(q) && !p.slug.toLowerCase().includes(q) && !p.path.toLowerCase().includes(q)) return false;
@@ -134,7 +120,7 @@ export function Dashboard() {
     if (filterStatus === 'running' && !getProjectStatus(p)) return false;
     if (filterStatus === 'stopped' && getProjectStatus(p)) return false;
     return true;
-  });
+  }), [projects, search, filterType, filterStatus, routeMap]);
 
   const hasActiveFilters = !!search || !!filterType || filterStatus !== 'all';
 
@@ -401,7 +387,7 @@ export function Dashboard() {
 }
 
 function PortlessBanner() {
-  const { data: settings } = useApi<Record<string, string>>('/api/settings');
+  const { data: settings } = useSettings();
   if (!settings) return null;
 
   const subdomainRouting = settings.subdomain_routing === 'true';

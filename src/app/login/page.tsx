@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { apiPost } from '@/lib/hooks/use-api';
+
+
 
 export default function LoginPage() {
   const [passcode, setPasscode] = useState('');
@@ -16,7 +17,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     try {
-      await apiPost('/api/auth', { action: 'login', passcode });
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', passcode }),
+      });
+      if (!res.ok) throw new Error('Login failed');
       router.push('/');
     } catch {
       setError('Invalid passcode');

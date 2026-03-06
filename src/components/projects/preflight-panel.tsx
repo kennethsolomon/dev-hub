@@ -1,17 +1,10 @@
 'use client';
 
-import { useApi } from '@/lib/hooks/use-api';
+import { usePreflight } from '@/lib/query/hooks';
 import { Button } from '@/components/ui/button';
 
-interface PreflightResult {
-  check: string;
-  status: 'pass' | 'warn' | 'fail';
-  message: string;
-  quickFix?: { label: string; action: string; args?: any };
-}
-
 export function PreflightPanel({ projectId }: { projectId: string }) {
-  const { data: checks, loading, refetch } = useApi<PreflightResult[]>(`/api/projects/${projectId}/preflight`);
+  const { data: checks, isLoading: loading, refetch } = usePreflight(projectId);
 
   const statusIcon = (s: string) => {
     switch (s) {
@@ -30,7 +23,7 @@ export function PreflightPanel({ projectId }: { projectId: string }) {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <span className="text-[15px] font-semibold">Preflight Checks</span>
-        <Button size="sm" variant="outline" onClick={refetch} disabled={loading}>
+        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={loading}>
           {loading ? 'Checking...' : 'Re-check'}
         </Button>
       </div>
