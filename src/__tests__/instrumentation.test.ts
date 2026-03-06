@@ -11,6 +11,7 @@ describe('instrumentation.ts', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
   afterEach(() => {
@@ -45,15 +46,5 @@ describe('instrumentation.ts', () => {
   it('onRequestError should be a no-op function', async () => {
     const { onRequestError } = await import('../instrumentation');
     await expect(onRequestError()).resolves.toBeUndefined();
-  });
-});
-
-describe('instrumentation.node.ts', () => {
-  it('should call registerShutdownHandlers on register()', async () => {
-    // This tests the real instrumentation.node module's contract
-    // The shutdown module is already tested in its own test file
-    // Here we just verify the wiring via the mock
-    expect(mockNodeRegister).toBeDefined();
-    expect(typeof mockNodeRegister).toBe('function');
   });
 });

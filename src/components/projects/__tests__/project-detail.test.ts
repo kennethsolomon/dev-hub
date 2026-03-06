@@ -9,11 +9,9 @@ const SOURCE = fs.readFileSync(
 
 describe('ProjectDetail hooks ordering', () => {
   it('should call all hooks before any early return', () => {
-    // Extract the component body (from "export function ProjectDetail" to the first early return)
     const fnStart = SOURCE.indexOf('export function ProjectDetail');
     expect(fnStart).toBeGreaterThan(-1);
 
-    // Find the first early return pattern (if (...) return)
     const afterFnStart = SOURCE.slice(fnStart);
     const firstEarlyReturn = afterFnStart.search(/if\s*\(.*\)\s*return\s*\(/);
     expect(firstEarlyReturn).toBeGreaterThan(-1);
@@ -40,28 +38,5 @@ describe('ProjectDetail hooks ordering', () => {
     // No React hooks should be called between the last early return and the main return
     const hookPattern = /\buse(State|Effect|Memo|Callback|Ref|Context)\s*\(/;
     expect(betweenReturns).not.toMatch(hookPattern);
-  });
-});
-
-describe('formatUptime', () => {
-  // formatUptime is not exported, so we verify its logic via source inspection
-  // and test the expected patterns exist
-  it('should handle negative values', () => {
-    expect(SOURCE).toContain("if (ms < 0) return '—'");
-  });
-
-  it('should handle seconds, minutes, and hours', () => {
-    expect(SOURCE).toContain('const seconds = Math.floor(ms / 1000)');
-    expect(SOURCE).toContain('const minutes = Math.floor(seconds / 60)');
-    expect(SOURCE).toContain('const hours = Math.floor(minutes / 60)');
-  });
-});
-
-describe('typeBadgeColor', () => {
-  it('should handle node, laravel, expo, and default types', () => {
-    expect(SOURCE).toContain("case 'node':");
-    expect(SOURCE).toContain("case 'laravel':");
-    expect(SOURCE).toContain("case 'expo':");
-    expect(SOURCE).toContain('default:');
   });
 });

@@ -187,7 +187,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const useSubdomain = route?.url && !route.url.includes(':4400');
   const projectUrl = useSubdomain ? route.url : (directPort ? `http://localhost:${directPort}` : null);
 
-
   return (
     <div className="p-6 space-y-6">
       {/* Back link */}
