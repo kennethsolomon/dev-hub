@@ -1,82 +1,113 @@
-# Findings — 2026-03-06 — Production Mode, Performance & Graceful Shutdown
+# Findings — 2026-03-06 — Auto Build & Restart (File Watcher)
 
 ## Problem Statement
 
-DevHub runs in dev mode (`npm run dev` with Turbopack), causing visible "compiling..." delays on every navigation. All pages are client-rendered with no code-splitting, heavy re-render loops, and no data caching. Additionally, when the dev-hub server closes, all managed project processes remain orphaned — there's no shutdown handler. The app should behave like a production application.
+When code changes are made to a managed project, some services (e.g., workers) don't auto-reload — the user must manually stop and restart them. There's no file-watching mechanism in dev-hub to detect changes and trigger rebuilds/restarts. The user wants a toggleable auto-build feature with manual trigger support.
 
 ## Requirements
 
 | Requirement | Details |
 |-------------|---------|
-| Production build mode | Run from `npm run build` + `npm start` to eliminate compilation delays |
-| Build modes | Toggle between `--watch` (auto-rebuild on changes) and manual build |
-| Auto-start on login | LaunchAgent to start dev-hub on macOS login |
-| Menu bar indicator | Deferred to future — too large a scope (native app needed) |
-| Graceful shutdown | User-configurable: "Stop all projects on exit" toggle in settings |
-| Shutdown escalation | SIGINT -> SIGTERM -> SIGKILL with stop_timeout respected |
-| Server components | Migrate pages to server components where possible for less JS |
-| TanStack Query | Replace raw `useApi()` hooks with TanStack Query for caching/dedup |
-| Memoization | Fix re-render issues (1s timer, log pattern matching, filtering) |
-| Code-splitting | Lazy-load tab content in ProjectDetail via `next/dynamic` |
+| File watcher | Single `fs.watch` (recursive) per project directory |
+| Auto-build toggle | Project-level master toggle (`auto_build_enabled`) |
+| Build command | Optional project-level `build_command` (e.g., `pnpm build`) |
+| Per-service opt-in | Each service has `restart_on_watch` boolean |
+| Per-service build override | Optional `watch_build_command` per service (overrides project-level) |
+| Debounce | Default 2000ms, configurable per project |
+| Manual trigger | "Build & Restart" button in project header (works even with auto-build off) |
+| Ignore patterns | Hardcoded sensible defaults: `node_modules`, `.git`, `.next`, `dist`, `build`, `vendor`, `.turbo`, `*.log`, `.env*` |
 
-## Chosen Approach: Full Production Optimization (Approach C)
+## Chosen Approach: Hybrid — Project Watcher + Per-Service Opt-in (Approach C)
 
-### Work Streams
+### Architecture
 
-#### 1. Production Build Infrastructure
-- Add npm scripts: `build:watch` (rebuild on file changes) and `build:prod` (one-shot)
-- Create LaunchAgent plist to auto-start dev-hub on login (`~/Library/LaunchAgents/`)
-- Add install/uninstall scripts for the LaunchAgent
-- Add a "Stop all projects on exit" toggle to settings (DB-backed)
+#### 1. DB Changes (Migration v2)
 
-#### 2. Graceful Shutdown Handler
-- Register `SIGTERM`, `SIGINT`, `beforeExit` handlers on the ProcessManager
-- On shutdown signal: check "stop all on exit" setting
-  - If enabled: call `stopService()` on all running processes with escalation
-  - If disabled: just close DB connection and exit (processes stay alive)
-- Close DB connection explicitly on shutdown
-- Force-close all SSE streams on shutdown
-- Add a global timeout (e.g., 30s) so shutdown doesn't hang indefinitely
+**Projects table — new columns:**
+- `auto_build_enabled` INTEGER DEFAULT 0
+- `build_command` TEXT (nullable)
+- `watch_debounce_ms` INTEGER DEFAULT 2000
 
-#### 3. Server Component Migration
-- Convert page components from `"use client"` to server components
-- Pages fetch data server-side, pass as props to client components
-- Keep interactive parts (tabs, buttons, filters, modals) as client components
-- Pattern: `page.tsx` (server) -> `dashboard.tsx` (client, receives initial data as props)
+**Services table — new columns:**
+- `restart_on_watch` INTEGER DEFAULT 0
+- `watch_build_command` TEXT (nullable)
 
-#### 4. TanStack Query Integration
-- Install `@tanstack/react-query`
-- Add `QueryClientProvider` to app layout
-- Replace `useApi()` calls with `useQuery()` / `useMutation()`
-- Configure stale times appropriate for each data type:
-  - Projects list: staleTime ~5s (changes rarely)
-  - Status: staleTime ~2s (changes on start/stop)
-  - Settings: staleTime ~30s
-- Invalidate relevant queries after mutations (start/stop/delete)
+#### 2. File Watcher Module (`src/lib/process/file-watcher.ts`)
 
-#### 5. Component Performance Fixes
-- **ProjectDetail 1s timer**: Scope `setInterval` to only the uptime display component, not the entire tree
-- **LogViewer pattern matching**: Memoize `matchErrorPatterns()` results with `useMemo` keyed on log entry
-- **Dashboard filtering**: Memoize `filteredProjects` computation
-- **Code-splitting**: Use `next/dynamic` for ProjectDetail tab content (LogViewer, ProjectTerminal, EnvEditor, ProjectConfig)
+- Singleton manager (like ProcessManager) stored on `globalThis`
+- Uses Node `fs.watch` with `{ recursive: true }` (macOS supports this natively)
+- Maintains one watcher per project (keyed by project ID)
+- Debounce logic: on file change, reset a timer; when timer fires, trigger build+restart
+- Ignore filter: skip events for paths matching hardcoded ignore patterns
+- Flow on trigger:
+  1. For each service with `restart_on_watch = 1`:
+     a. Run `watch_build_command` (or project `build_command`, or skip if both empty)
+     b. Stop the service
+     c. Start the service
+  2. Emit events for UI feedback (build started, build complete, restart complete)
+
+#### 3. Watcher Lifecycle
+
+- **Start watching:** When auto-build is toggled ON or when a project with `auto_build_enabled` starts
+- **Stop watching:** When auto-build is toggled OFF or when all services in the project are stopped
+- **Rehydration:** On dev-hub startup, start watchers for projects that have `auto_build_enabled = 1` AND have running services
+
+#### 4. API Endpoints
+
+- `PUT /api/projects/[id]` — Already supports updating project fields; extend to handle `auto_build_enabled`, `build_command`, `watch_debounce_ms`
+- `PUT /api/services/[id]` — Extend to handle `restart_on_watch`, `watch_build_command`
+- `POST /api/projects/[id]/build` — New endpoint: manual "Build & Restart" trigger (runs build + restarts flagged services regardless of auto-build toggle)
+
+#### 5. UI Changes
+
+**Project header (project-detail.tsx):**
+- Add "Build & Restart" button next to Start/Stop buttons
+- Add auto-build toggle switch (small, inline)
+
+**Project Config tab:**
+- `build_command` input field
+- `watch_debounce_ms` input (or preset dropdown: 1s / 2s / 5s)
+- Auto-build enabled toggle with description
+
+**Service card (service-card.tsx):**
+- "Restart on file change" checkbox (visible in edit mode)
+- Optional `watch_build_command` input (visible in edit mode)
+
+### Example Configuration
+
+| Service | `restart_on_watch` | Build command |
+|---------|--------------------|---------------|
+| `pnpm dev` | OFF | — (Next.js hot-reloads) |
+| `ngrok http 43435` | OFF | — (tunnel, no rebuild) |
+| `pnpm worker` | ON | `pnpm build` (or blank if self-compiles) |
 
 ### Key Decisions
 
 | Decision | Rationale |
 |----------|-----------|
-| Run production builds | Eliminates 100% of "compiling..." delays; appropriate for a tool that's always running |
-| `build:watch` toggle | Developers working on dev-hub itself need fast iteration; toggle between watch and manual |
-| LaunchAgent (not LaunchDaemon) | Runs in user context, not root; appropriate for a dev tool |
-| Defer menu bar icon | Requires a native Swift/Electron app; out of scope for this iteration |
-| "Stop all on exit" as setting | User choice (option C); some may want processes to survive server restarts |
-| TanStack Query over SWR | More features (optimistic updates, devtools, mutation helpers); ~5KB larger, negligible for local app |
-| Server components for pages | Less JS shipped, faster initial paint; interactive parts stay client-side |
-| Scoped timer component | Prevents entire ProjectDetail tree from re-rendering every second |
+| Single watcher per project | Efficient — one `fs.watch` recursive call vs. per-service watchers |
+| Per-service `restart_on_watch` | Granular control — skip ngrok, skip dev server that already hot-reloads |
+| Optional build command | Some services self-compile on start; forcing a build step would be wasteful |
+| 2s default debounce | Long enough to batch rapid saves, short enough to feel responsive; configurable |
+| Hardcoded ignore list | Covers 99% of cases; no need for user config in v1 |
+| Manual button always available | Works even with auto-build OFF — useful for one-off rebuilds |
+| Build runs per-service (not once globally) | Service override build command needs per-service execution |
+
+### Ignore Patterns (Hardcoded)
+
+```
+node_modules, .git, .next, dist, build, vendor, .turbo, *.log, .env*,
+.DS_Store, __pycache__, .cache, coverage, .output, .nuxt, .svelte-kit
+```
 
 ## Open Questions
+
 - None — ready for planning.
 
 ## Previous Findings
+
+### Production Mode, Performance & Graceful Shutdown (2026-03-06)
+See git history for prior findings on production build infra, graceful shutdown, server components, TanStack Query, and component performance (planned, not yet implemented).
 
 ### Persistent Logs & Terminal (2026-03-06)
 See git history for prior findings on persistent logs feature (implemented).

@@ -34,12 +34,14 @@ export interface StatusData {
 export interface ProjectData {
   project: {
     id: string; name: string; slug: string; path: string; type: string;
-    config_json: string | null; created_at: string; updated_at: string;
+    config_json: string | null; auto_build_enabled: number; build_command: string | null;
+    watch_debounce_ms: number; created_at: string; updated_at: string;
   };
   services: Array<{
     id: string; name: string; command: string; desired_port: number | null;
     assigned_port: number | null; is_primary: number; restart_policy: string;
     depends_on_json: string; env_json: string; cwd: string | null;
+    restart_on_watch: number; watch_build_command: string | null;
   }>;
   runs: Array<{
     id: string; service_id: string; status: string; pid: number | null;

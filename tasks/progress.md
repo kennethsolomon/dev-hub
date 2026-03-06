@@ -1,5 +1,39 @@
 # Progress Log
 
+## Session: 2026-03-06 — Auto Build & Restart (File Watcher)
+
+## Work Log
+
+- 2026-03-06 — All phases complete (single session)
+  - **Phase 1: DB Migration** — Added migration v2 to `schema.ts` (5 new columns: `auto_build_enabled`, `build_command`, `watch_debounce_ms` on projects; `restart_on_watch`, `watch_build_command` on services). Updated TS interfaces in `db/index.ts`.
+  - **Phase 2: File Watcher** — Created `src/lib/process/file-watcher.ts`: singleton `FileWatcherManager` on `globalThis`, uses `fs.watch` recursive, debounce, ignore filter (node_modules, .git, .next, etc.), async build via `zsh -lc`, emits `build-status` events. Wired rehydration in `instrumentation.node.ts`.
+  - **Phase 3: API** — Extended `PUT /api/projects/[id]` with new fields + watcher start/stop on toggle. Extended `PUT /api/services/[id]` with watch fields. Created `POST /api/projects/[id]/build` for manual trigger.
+  - **Phase 4: Lifecycle** — ProcessManager `startProject()` starts watcher if `auto_build_enabled`; `stopProject()` stops watcher.
+  - **Phase 5: Build Status SSE** — Created `GET /api/build/stream` SSE endpoint. Created `useBuildStatus` client hook with auto-hide after 3s.
+  - **Phase 6: Project UI** — Added Build & Restart button (Hammer icon) + auto-build toggle to project header. Added build progress banner with phase text + animated bar. Added Build & Watch config section (build command, debounce dropdown, toggle).
+  - **Phase 7: Service Card** — Added "Restart on file change" checkbox + build command override in edit mode. Added "watch" badge on services with `restart_on_watch`.
+  - **Verification:** `npx tsc --noEmit` PASS, `npm test` 130/130 PASS, `npm run build` PASS
+
+  Files created:
+  - `src/lib/process/file-watcher.ts`
+  - `src/app/api/projects/[id]/build/route.ts`
+  - `src/app/api/build/stream/route.ts`
+  - `src/lib/hooks/use-build-status.ts`
+
+  Files modified:
+  - `src/lib/db/schema.ts` (migration v2)
+  - `src/lib/db/index.ts` (interfaces)
+  - `src/instrumentation.node.ts` (rehydration)
+  - `src/app/api/projects/[id]/route.ts` (new fields + watcher toggle)
+  - `src/app/api/services/[id]/route.ts` (new fields)
+  - `src/lib/process/manager.ts` (lifecycle hooks)
+  - `src/lib/query/hooks.ts` (types)
+  - `src/lib/query/mutations.ts` (new mutation + extended types)
+  - `src/components/projects/project-detail.tsx` (header, banner, config)
+  - `src/components/services/service-card.tsx` (watch UI)
+
+---
+
 ## Session: 2026-03-05 — Terminal Tab + Port Manager
 
 ## Work Log (Terminal + Ports)

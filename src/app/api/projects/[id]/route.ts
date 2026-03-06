@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getFileWatcherManager } from '@/lib/process/file-watcher';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,7 +28,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const sets: string[] = [];
   const values: any[] = [];
 
-  for (const key of ['name', 'slug', 'path', 'type', 'config_json']) {
+  for (const key of ['name', 'slug', 'path', 'type', 'config_json', 'auto_build_enabled', 'build_command', 'watch_debounce_ms']) {
     if (body[key] !== undefined) {
       sets.push(`${key} = ?`);
       values.push(body[key]);
@@ -38,6 +39,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     sets.push("updated_at = datetime('now')");
     values.push(id);
     db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+  }
+
+  // Start/stop file watcher when auto_build_enabled changes
+  if (body.auto_build_enabled !== undefined) {
+    const fw = getFileWatcherManager();
+    if (body.auto_build_enabled) {
+      fw.startWatching(id);
+    } else {
+      fw.stopWatching(id);
+    }
   }
 
   return NextResponse.json({ ok: true });

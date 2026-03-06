@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useProject, useStatus } from '@/lib/query/hooks';
-import { useStartProject, useStopProject, useDeleteProject, useCreateService, useUpdateProject } from '@/lib/query/mutations';
+import { useStartProject, useStopProject, useDeleteProject, useCreateService, useUpdateProject, useBuildRestart } from '@/lib/query/mutations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { ServiceCard } from '@/components/services/service-card';
-import { ArrowLeft, ExternalLink, Clock, Loader2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Clock, Loader2, Hammer } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
@@ -20,6 +22,7 @@ const EnvPanel = dynamic(() => import('@/components/projects/env-panel').then(m 
 const ProjectTerminal = dynamic(() => import('@/components/terminal/project-terminal').then(m => m.ProjectTerminal));
 import { useLogStream } from '@/lib/hooks/use-log-stream';
 import { useTerminal } from '@/lib/hooks/use-terminal';
+import { useBuildStatus } from '@/lib/hooks/use-build-status';
 
 
 const tabClass = 'rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm';
@@ -51,11 +54,15 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const stopProjectMut = useStopProject();
   const deleteProjectMut = useDeleteProject();
   const createServiceMut = useCreateService();
+  const buildRestartMut = useBuildRestart();
+  const updateProjectMut = useUpdateProject();
+  const buildStatus = useBuildStatus();
   const [addServiceOpen, setAddServiceOpen] = useState(false);
   const [newService, setNewService] = useState({ name: '', command: '', desired_port: '' });
   const [startingAll, setStartingAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
   const [addingService, setAddingService] = useState(false);
+  const [buildingManual, setBuildingManual] = useState(false);
   const terminal = useTerminal(projectId);
   const logStream = useLogStream();
 
@@ -178,8 +185,35 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
     }
   };
 
+  const handleBuildRestart = async () => {
+    setBuildingManual(true);
+    try {
+      const result = await buildRestartMut.mutateAsync(projectId);
+      if (result.restarted?.length > 0) {
+        toast.success(`Rebuilt & restarted: ${result.restarted.join(', ')}`);
+      } else {
+        toast.info('No services flagged for restart on watch');
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setBuildingManual(false);
+    }
+  };
+
+  const handleToggleAutoBuild = async (enabled: boolean) => {
+    try {
+      await updateProjectMut.mutateAsync({ projectId, auto_build_enabled: enabled ? 1 : 0 });
+      toast.success(enabled ? 'Auto-build enabled' : 'Auto-build disabled');
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const anyRunning = services.some(s => runningServiceIds.has(s.id));
   const runningCount = services.filter(s => runningServiceIds.has(s.id)).length;
+  const isBuildingThisProject = buildStatus.building && buildStatus.projectId === projectId;
+  const showBuildBanner = buildStatus.projectId === projectId && buildStatus.phase !== null;
 
   const runningService = status?.running?.find((r: any) => services.some(s => s.id === r.serviceId));
   const directPort = runningService?.assignedPort;
@@ -204,7 +238,24 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             <p className="text-sm text-muted-foreground font-mono">{project.path}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 mr-2">
+            <Switch
+              checked={!!project.auto_build_enabled}
+              onCheckedChange={handleToggleAutoBuild}
+              className="data-[state=checked]:bg-primary"
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Auto Build</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={buildingManual || isBuildingThisProject}
+            onClick={handleBuildRestart}
+          >
+            {(buildingManual || isBuildingThisProject) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Hammer className="w-3.5 h-3.5" />}
+            {buildingManual ? 'Building...' : 'Build & Restart'}
+          </Button>
           {anyRunning ? (
             <Button variant="destructive" disabled={stoppingAll} onClick={handleStopAll}>
               {stoppingAll && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -258,6 +309,38 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         </div>
         <UptimeDisplay earliestStart={earliestStart} />
       </div>
+
+      {/* Build Progress Banner */}
+      {showBuildBanner && (
+        <div className="animate-fade-up rounded-xl border border-border bg-card overflow-hidden">
+          <div className="px-4 py-3 flex items-center gap-3">
+            {buildStatus.phase === 'complete' ? (
+              <div className="w-2 h-2 rounded-full bg-green-500" />
+            ) : buildStatus.phase === 'error' ? (
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+            ) : (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">
+                {buildStatus.phase === 'change-detected' && 'Change detected, preparing build...'}
+                {buildStatus.phase === 'building' && `Building ${buildStatus.serviceName || ''}...`}
+                {buildStatus.phase === 'restarting' && `Restarting ${buildStatus.serviceName || ''}...`}
+                {buildStatus.phase === 'complete' && `Restarted: ${buildStatus.restarted.join(', ')}`}
+                {buildStatus.phase === 'error' && `Build failed${buildStatus.serviceName ? ` (${buildStatus.serviceName})` : ''}`}
+              </p>
+              {buildStatus.error && (
+                <p className="text-xs text-red-400 mt-0.5 truncate">{buildStatus.error}</p>
+              )}
+            </div>
+          </div>
+          {buildStatus.building && (
+            <div className="h-0.5 w-full bg-muted overflow-hidden">
+              <div className="h-full bg-primary animate-pulse w-full" />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Badges */}
       <div className="flex items-center gap-2 flex-wrap animate-fade-up" style={{ animationDelay: '100ms' }}>
@@ -430,6 +513,8 @@ function UptimeDisplay({ earliestStart }: { earliestStart: number | null }) {
 function ConfigPanel({ project, onDelete }: { project: any; onDelete: () => void }) {
   const [name, setName] = useState(project.name);
   const [slug, setSlug] = useState(project.slug);
+  const [buildCommand, setBuildCommand] = useState(project.build_command || '');
+  const [debounceMs, setDebounceMs] = useState(String(project.watch_debounce_ms || 2000));
   const updateProject = useUpdateProject();
 
   const handleSave = async () => {
@@ -441,8 +526,76 @@ function ConfigPanel({ project, onDelete }: { project: any; onDelete: () => void
     }
   };
 
+  const handleSaveBuild = async () => {
+    try {
+      await updateProject.mutateAsync({
+        projectId: project.id,
+        build_command: buildCommand || null,
+        watch_debounce_ms: parseInt(debounceMs) || 2000,
+      });
+      toast.success('Build settings saved');
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Build & Watch Settings */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <span className="text-[15px] font-semibold font-display">Build & Watch</span>
+        </div>
+        <div className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Auto Build</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Automatically rebuild & restart flagged services when files change</p>
+            </div>
+            <Switch
+              checked={!!project.auto_build_enabled}
+              onCheckedChange={async (enabled) => {
+                try {
+                  await updateProject.mutateAsync({ projectId: project.id, auto_build_enabled: enabled ? 1 : 0 });
+                  toast.success(enabled ? 'Auto-build enabled' : 'Auto-build disabled');
+                } catch (err: any) {
+                  toast.error(err.message);
+                }
+              }}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Build Command</label>
+            <Input
+              value={buildCommand}
+              onChange={e => setBuildCommand(e.target.value)}
+              placeholder="e.g., pnpm build"
+              className="font-mono"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Runs before restarting services. Leave empty to skip build step.</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Debounce</label>
+            <Select value={debounceMs} onValueChange={setDebounceMs}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1000">1 second</SelectItem>
+                <SelectItem value="2000">2 seconds</SelectItem>
+                <SelectItem value="5000">5 seconds</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Wait time after last file change before triggering build</p>
+          </div>
+          <Button disabled={updateProject.isPending} onClick={handleSaveBuild}>
+            {updateProject.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {updateProject.isPending ? 'Saving...' : 'Save Build Settings'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Project Configuration */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <span className="text-[15px] font-semibold font-display">Project Configuration</span>

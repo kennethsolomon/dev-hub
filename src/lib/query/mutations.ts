@@ -83,10 +83,21 @@ export function useImportProject() {
 export function useUpdateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, ...body }: { projectId: string; name?: string; slug?: string }) =>
+    mutationFn: ({ projectId, ...body }: { projectId: string; name?: string; slug?: string; auto_build_enabled?: number; build_command?: string | null; watch_debounce_ms?: number }) =>
       putJson(`/api/projects/${projectId}`, body),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.project(vars.projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.projects });
+    },
+  });
+}
+
+export function useBuildRestart() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) => postJson(`/api/projects/${projectId}/build`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.status });
       qc.invalidateQueries({ queryKey: queryKeys.projects });
     },
   });
@@ -128,7 +139,7 @@ export function useCreateService() {
 export function useUpdateService() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ serviceId, ...body }: { serviceId: string; name?: string; command?: string; desired_port?: number | null; env_json?: string; cwd?: string | null }) =>
+    mutationFn: ({ serviceId, ...body }: { serviceId: string; name?: string; command?: string; desired_port?: number | null; env_json?: string; cwd?: string | null; restart_on_watch?: number; watch_build_command?: string | null }) =>
       putJson(`/api/services/${serviceId}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.status });

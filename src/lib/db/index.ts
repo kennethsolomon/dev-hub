@@ -58,6 +58,9 @@ export interface Project {
   path: string;
   type: string;
   config_json: string | null;
+  auto_build_enabled: number;
+  build_command: string | null;
+  watch_debounce_ms: number;
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +81,8 @@ export interface Service {
   restart_policy: string;
   stop_signal: string;
   stop_timeout: number;
+  restart_on_watch: number;
+  watch_build_command: string | null;
   created_at: string;
   updated_at: string;
 }
