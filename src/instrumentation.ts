@@ -3,9 +3,8 @@ export async function onRequestError() {
 }
 
 export async function register() {
-  // Only register on the server (not edge runtime)
-  if (typeof window === 'undefined') {
-    const { registerShutdownHandlers } = await import('./lib/process/shutdown');
-    registerShutdownHandlers();
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const mod = await import('./instrumentation.node');
+    mod.register();
   }
 }

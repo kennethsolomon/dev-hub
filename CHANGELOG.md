@@ -50,3 +50,5 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Port conflict false negatives when service binds on `::` (IPv6)
 - Timer leak in process stop escalation path
 - SQL NULL handling in env override queries
+- Edge Runtime error when loading instrumentation hook (split Node.js code into `instrumentation.node.ts`)
+- "Rendered more hooks than during the previous render" crash on project detail page (moved `useMemo` before early returns)
