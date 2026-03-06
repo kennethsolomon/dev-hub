@@ -52,7 +52,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const deleteProjectMut = useDeleteProject();
   const createServiceMut = useCreateService();
   const [addServiceOpen, setAddServiceOpen] = useState(false);
-  const [newService, setNewService] = useState({ name: '', command: '', desired_port: '', is_primary: false });
+  const [newService, setNewService] = useState({ name: '', command: '', desired_port: '' });
   const [startingAll, setStartingAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
   const [addingService, setAddingService] = useState(false);
@@ -152,7 +152,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       });
       toast.success('Service added');
       setAddServiceOpen(false);
-      setNewService({ name: '', command: '', desired_port: '', is_primary: false });
+      setNewService({ name: '', command: '', desired_port: '' });
       refetch();
     } catch (err: any) {
       toast.error(err.message);
@@ -375,8 +375,8 @@ function AddServiceDialog({
   handleAddService,
   adding,
 }: {
-  newService: { name: string; command: string; desired_port: string; is_primary: boolean };
-  setNewService: React.Dispatch<React.SetStateAction<{ name: string; command: string; desired_port: string; is_primary: boolean }>>;
+  newService: { name: string; command: string; desired_port: string };
+  setNewService: React.Dispatch<React.SetStateAction<{ name: string; command: string; desired_port: string }>>;
   handleAddService: () => void;
   adding: boolean;
 }) {
@@ -398,10 +398,6 @@ function AddServiceDialog({
           <label className="text-sm font-medium">Desired Port (optional)</label>
           <Input value={newService.desired_port} onChange={e => setNewService(s => ({ ...s, desired_port: e.target.value }))} placeholder="3000" />
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={newService.is_primary} onChange={e => setNewService(s => ({ ...s, is_primary: e.target.checked }))} />
-          Primary service (receives subdomain traffic)
-        </label>
         <Button onClick={handleAddService} disabled={!newService.name || !newService.command || adding}>
           {adding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           {adding ? 'Adding...' : 'Add'}

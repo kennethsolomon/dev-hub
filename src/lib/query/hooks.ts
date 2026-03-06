@@ -8,7 +8,7 @@ async function fetchJson<T>(url: string): Promise<T> {
   if (!res.ok) {
     const text = await res.text();
     let message = `${res.status}: ${res.statusText}`;
-    try { message = JSON.parse(text).error || message; } catch {}
+    try { message = JSON.parse(text).error || message; } catch { if (process.env.NODE_ENV === 'development') console.warn('[fetchJson] Non-JSON error body:', text); }
     throw new Error(message);
   }
   return res.json();

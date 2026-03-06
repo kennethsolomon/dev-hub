@@ -132,6 +132,7 @@ export function useUpdateService() {
       putJson(`/api/services/${serviceId}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.status });
+      qc.invalidateQueries({ queryKey: queryKeys.projects });
     },
   });
 }
@@ -142,6 +143,7 @@ export function useDeleteService() {
     mutationFn: (serviceId: string) => deleteJson(`/api/services/${serviceId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.status });
+      qc.invalidateQueries({ queryKey: queryKeys.projects });
     },
   });
 }

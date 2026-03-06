@@ -120,7 +120,7 @@ export function Dashboard() {
     if (filterStatus === 'running' && !getProjectStatus(p)) return false;
     if (filterStatus === 'stopped' && getProjectStatus(p)) return false;
     return true;
-  }), [projects, search, filterType, filterStatus, routeMap]);
+  }), [projects, search, filterType, filterStatus, status]);
 
   const hasActiveFilters = !!search || !!filterType || filterStatus !== 'all';
 

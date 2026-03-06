@@ -26,6 +26,12 @@ if [ ! -f "$PLIST_SRC" ]; then
   exit 1
 fi
 
+# Check that dependencies are installed
+if [ ! -d "$DEVHUB_ROOT/node_modules" ]; then
+  echo "ERROR: node_modules not found. Run 'npm install' first."
+  exit 1
+fi
+
 # Check that a production build exists
 if [ ! -d "$DEVHUB_ROOT/.next" ]; then
   echo "WARNING: No production build found. Run 'npm run build' first."
