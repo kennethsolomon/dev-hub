@@ -303,8 +303,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                   service={svc}
                   isRunning={runningServiceIds.has(svc.id)}
                   latestRun={runs.find(r => r.service_id === svc.id)}
-
-
                 />
               </div>
             ))}
@@ -355,7 +353,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           </TabsContent>
 
           <TabsContent value="config" className="mt-6">
-            <ConfigPanel project={project} onUpdate={refetch} onDelete={handleDeleteProject} />
+            <ConfigPanel project={project} onDelete={handleDeleteProject} />
           </TabsContent>
 
           <TabsContent value="terminal" className="mt-6">
@@ -427,7 +425,7 @@ function UptimeDisplay({ earliestStart }: { earliestStart: number | null }) {
   );
 }
 
-function ConfigPanel({ project, onUpdate, onDelete }: { project: any; onUpdate: () => void; onDelete: () => void }) {
+function ConfigPanel({ project, onDelete }: { project: any; onDelete: () => void }) {
   const [name, setName] = useState(project.name);
   const [slug, setSlug] = useState(project.slug);
   const updateProject = useUpdateProject();
@@ -436,7 +434,6 @@ function ConfigPanel({ project, onUpdate, onDelete }: { project: any; onUpdate: 
     try {
       await updateProject.mutateAsync({ projectId: project.id, name, slug });
       toast.success('Project updated');
-      onUpdate();
     } catch (err: any) {
       toast.error(err.message);
     }
