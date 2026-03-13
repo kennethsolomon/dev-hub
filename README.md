@@ -2,8 +2,6 @@
 
 <img src="public/logo.png" alt="DevHub" width="200" />
 
-# DevHub
-
 A local-first development environment manager — start, stop, and monitor your macOS projects from a single dashboard with subdomain routing, port management, and real-time log streaming.
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
