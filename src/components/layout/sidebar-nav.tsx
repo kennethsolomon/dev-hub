@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -23,12 +24,12 @@ export function SidebarNav({ mobile = false, onNavigate }: { mobile?: boolean, o
     )}>
       <div className="p-6 pb-4">
         <div className="flex items-center gap-2">
-          <span className="text-primary text-lg">&#9670;</span>
+          <Image src="/logo.png" alt="DevHub" width={28} height={28} />
           <h1 className="text-xl font-bold tracking-tight font-display text-foreground">
             DevHub
           </h1>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 ml-7">v0.1.0</p>
+        <p className="text-xs text-muted-foreground mt-1 ml-9">v0.1.0</p>
       </div>
 
       <div className="mx-4 border-t border-border" />
